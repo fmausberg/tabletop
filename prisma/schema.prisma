@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum CharacterType {
+  NAMED_HERO
+  HERO
+  WARRIOR
+}
+
+enum PhaseType {
+  PLACEMENT
+  INITIATIVE
+  MOVEMENT
+  SHOOTING
+  COMBAT
+}
+
+model User {
+  id    String @id @default(cuid())
+  name  String
+  email String @unique
+
+  participations GameParticipant[]
+}
+
+model Board {
+  id       String @id @default(cuid())
+  number   Int?
+  name     String
+  lengthCm Float
+  widthCm  Float
+
+  games Game[]
+}
+
+model Character {
+  id     String        @id @default(cuid())
+  number Int?          @unique
+  name   String
+  type   CharacterType
+
+  fightValueNear Int
+  fightValueFar  Int?
+  strength       Int
+  defense        Int
+  attacks        Int
+  wounds         Int
+  courage        Int
+
+  baseDiameterCm Float
+  heightCm       Float?
+  speedCm        Float
+
+  figures Figure[]
+}
+
+model Game {
+  id      String @id @default(cuid())
+  name    String
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id])
+
+  participants GameParticipant[]
+  figures      Figure[]
+  rounds       Round[]
+}
+
+model GameParticipant {
+  id     String @id @default(cuid())
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id])
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  figures        Figure[]
+  initiativesWon Round[]     @relation("InitiativeWinner")
+  phaseTurns     PhaseTurn[]
+
+  @@unique([gameId, userId])
+}
+
+model Figure {
+  id          String    @id @default(cuid())
+  gameId      String
+  game        Game      @relation(fields: [gameId], references: [id])
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id])
+
+  participantId String
+  participant   GameParticipant @relation(fields: [participantId], references: [id])
+
+  // Werte beim Hinzufügen der Figur zum Spiel:
+  initialFightValueNear Int
+  initialFightValueFar  Int?
+  initialStrength       Int
+  initialDefense        Int
+  initialAttacks        Int
+  initialWounds         Int
+  initialCourage        Int
+
+  // Aktueller Stand:
+  currentFightValueNear Int
+  currentFightValueFar  Int?
+  currentStrength       Int
+  currentDefense        Int
+  currentAttacks        Int
+  currentWounds         Int
+  currentCourage        Int
+
+  baseDiameterCm Float
+  speedCm        Float
+  removed        Boolean @default(false)
+
+  movementSteps MovementStep[]
+
+  @@index([gameId, participantId])
+}
+
+model Round {
+  id     String @id @default(cuid())
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id])
+  number Int
+
+  initiativeWinnerId String?
+  initiativeWinner   GameParticipant? @relation("InitiativeWinner", fields: [initiativeWinnerId], references: [id])
+
+  phases RoundPhase[]
+
+  @@unique([gameId, number])
+}
+
+model RoundPhase {
+  id      String    @id @default(cuid())
+  roundId String
+  round   Round     @relation(fields: [roundId], references: [id])
+  type    PhaseType
+
+  turns         PhaseTurn[]
+  movementSteps MovementStep[]
+
+  @@unique([roundId, type])
+}
+
+model PhaseTurn {
+  id      String     @id @default(cuid())
+  phaseId String
+  phase   RoundPhase @relation(fields: [phaseId], references: [id])
+
+  participantId String
+  participant   GameParticipant @relation(fields: [participantId], references: [id])
+
+  // Reihenfolge der Spieler innerhalb dieser Phase
+  sequence Int
+
+  movementSteps MovementStep[]
+
+  @@unique([phaseId, sequence])
+  @@unique([phaseId, participantId])
+}
+
+model MovementStep {
+  id      String     @id @default(cuid())
+  phaseId String
+  phase   RoundPhase @relation(fields: [phaseId], references: [id])
+
+  turnId String
+  turn   PhaseTurn @relation(fields: [turnId], references: [id])
+
+  figureId String
+  figure   Figure @relation(fields: [figureId], references: [id])
+
+  // Globale Reihenfolge über ALLE Figuren dieser Bewegungsphase
+  sequence Int
+
+  fromXcm Float
+  fromYcm Float
+  toXcm   Float
+  toYcm   Float
+
+  @@unique([phaseId, sequence])
+  @@index([figureId, phaseId])
+}
