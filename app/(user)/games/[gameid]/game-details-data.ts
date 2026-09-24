@@ -14,11 +14,6 @@ export async function getGameDetails(gameid: string) {
         },
       },
       participants: { orderBy: { user: { name: "asc" } }, include: { user: { select: { id: true, name: true, email: true } } } },
-      rounds: {
-        orderBy: { number: "desc" },
-        take: 1,
-        select: { number: true, phases: { select: { type: true } } },
-      },
     },
   });
   if (!game) notFound();

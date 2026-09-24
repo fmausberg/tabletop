@@ -57,7 +57,8 @@ export function CharactersTable({ characters }: { characters: Character[] }) {
             <fieldset disabled={pending}>
               <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                 <label className="col-span-2 text-sm">Name<input autoFocus className={input} name="name" required defaultValue={selected?.name ?? ""} /></label>
-                <label className="col-span-2 text-sm">Type
+                <label className="text-sm">Short<input className={input} name="short" required defaultValue={selected?.short ?? "X"} /></label>
+                <label className="text-sm">Type
                   <select className={input} name="type" defaultValue={selected?.type ?? "WARRIOR"}>
                     {Object.entries(typeLabels).map(([value, label]) => <option key={value} value={value} className="bg-white text-zinc-900">{label}</option>)}
                   </select>
@@ -83,6 +84,7 @@ export function CharactersTable({ characters }: { characters: Character[] }) {
           <thead className="bg-zinc-100 dark:bg-zinc-900">
             <tr>
               <th scope="col" className="p-3">Name</th>
+              <th scope="col" className="p-3">Short</th>
               <th scope="col" className="p-3">Type</th>
               {numericFields.map((field) => <th scope="col" className="p-3" key={field.name}>{field.label}</th>)}
               <th scope="col" className="p-3">Actions</th>
@@ -92,6 +94,7 @@ export function CharactersTable({ characters }: { characters: Character[] }) {
             {characters.map((character) => (
               <tr key={character.id} className="border-t border-zinc-200 dark:border-zinc-800">
                 <th scope="row" className="p-3 font-medium">{character.name}</th>
+                <td className="p-3">{character.short}</td>
                 <td className="p-3">{typeLabels[character.type]}</td>
                 {numericFields.map((field) => <td key={field.name} className="p-3 tabular-nums">{character[field.name] ?? "—"}</td>)}
                 <td className="p-3">

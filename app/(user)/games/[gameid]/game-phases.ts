@@ -1,5 +1,9 @@
 import type { PhaseType } from "@/generated/prisma/enums";
 
+export function phasesForRound(round: number): PhaseType[] {
+  return round === 0 ? ["PLACEMENT"] : ["INITIATIVE", "MOVEMENT", "SHOOTING", "COMBAT"];
+}
+
 export const phaseOrder: Record<PhaseType, number> = {
   PLACEMENT: 0, INITIATIVE: 1, MOVEMENT: 2, SHOOTING: 3, COMBAT: 4,
 };

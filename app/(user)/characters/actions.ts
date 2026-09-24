@@ -17,8 +17,10 @@ function errorMessage(error: unknown) {
 
 export async function saveCharacter(id: string | null, form: FormData) {
   const name = String(form.get("name") ?? "").trim();
+  const short = String(form.get("short") ?? "").trim();
   const type = String(form.get("type") ?? "") as CharacterType;
   if (!name) return { error: "Please enter a name." };
+  if (!short) return { error: "Please enter a short name." };
   if (!Object.values(CharacterType).includes(type)) return { error: "Please select a character type." };
 
   const values: Record<string, number | null> = {};
@@ -35,7 +37,7 @@ export async function saveCharacter(id: string | null, form: FormData) {
     values[field.name] = value;
   }
 
-  const data = { name, type, ...values } as Prisma.CharacterCreateInput;
+  const data = { name, short, type, ...values } as Prisma.CharacterCreateInput;
   try {
     if (id) await prisma.character.update({ where: { id }, data });
     else await prisma.character.create({ data });

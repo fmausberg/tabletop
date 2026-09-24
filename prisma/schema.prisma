@@ -70,6 +70,7 @@ model Character {
   type   CharacterType
   race   Race          @default(OTHER)
   points Int           @default(0)
+  short  String        @default("X")
 
   fightValueNear Int
   fightValueFar  Int?
@@ -91,6 +92,9 @@ model Game {
   name    String
   boardId String
   board   Board  @relation(fields: [boardId], references: [id])
+
+  currentRound Int       @default(0)
+  currentPhase PhaseType @default(PLACEMENT)
 
   participants GameParticipant[]
   figures      Figure[]
@@ -120,6 +124,7 @@ model Figure {
   characterId String
   character   Character @relation(fields: [characterId], references: [id])
   number      Int?
+  short       String    @default("X")
 
   participantId String
   participant   GameParticipant @relation(fields: [participantId], references: [id])

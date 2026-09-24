@@ -7,10 +7,10 @@ const actionLabels: Record<ActionType, string> = { SHOT: "Schuss", MELEE: "Nahka
 const shotLabels: Record<ShotResult, string> = {
   MISS: "Verfehlt", HIT_NO_WOUND: "Treffer ohne Wunde", WOUND: "Wunde",
 };
-const figureSelect = { id: true, character: { select: { name: true } } } as const;
+const figureSelect = { number: true, character: { select: { name: true } } } as const;
 
-function FigureLabel({ figure }: { figure: { id: string; character: { name: string } } }) {
-  return <>{figure.character.name}<span className="block font-mono text-xs text-zinc-500">{figure.id}</span></>;
+function FigureLabel({ figure }: { figure: { number: number | null; character: { name: string } } }) {
+  return <>{figure.character.name}{figure.number === null ? "" : ` ${figure.number}`}</>;
 }
 
 export async function ActionsSection({ gameId }: { gameId: string }) {
@@ -38,12 +38,11 @@ export async function ActionsSection({ gameId }: { gameId: string }) {
         <table className="w-full whitespace-nowrap text-left text-sm">
           <caption className="sr-only">Spielaktionen mit Schuss-, Nahkampf- und Wundendetails</caption>
           <thead className="bg-zinc-100 dark:bg-zinc-900"><tr>
-            {["Runde", "Phase", "Reihenfolge", "Typ", "Schütze", "Ziel", "Schussergebnis", "Nahkämpfer", "Sieger", "Wunden (vorher → nachher)", "Action-ID", "Phase-ID"].map((label) => <th scope="col" key={label} className="p-3">{label}</th>)}
+            {["Runde", "Reihenfolge", "Typ", "Schütze", "Ziel", "Schussergebnis", "Nahkämpfer", "Sieger", "Wunden (vorher → nachher)"].map((label) => <th scope="col" key={label} className="p-3">{label}</th>)}
           </tr></thead>
           <tbody>
             {actions.map((action) => <tr key={action.id} className="border-t border-zinc-200 align-top dark:border-zinc-800">
               <td className="p-3 tabular-nums">{action.phase.round.number}</td>
-              <td className="p-3">{action.phase.type}</td>
               <th scope="row" className="p-3 font-normal tabular-nums">{action.sequence}</th>
               <td className="p-3">{actionLabels[action.type]}</td>
               <td className="p-3">{action.shot ? <FigureLabel figure={action.shot.shooter} /> : "—"}</td>
@@ -52,10 +51,8 @@ export async function ActionsSection({ gameId }: { gameId: string }) {
               <td className="p-3">{action.melee?.combatants.length ? <ul className="space-y-2">{action.melee.combatants.map((combatant) => <li key={combatant.id}><FigureLabel figure={combatant.figure} /></li>)}</ul> : "—"}</td>
               <td className="p-3">{action.melee ? action.melee.winnerParticipant ? <>{action.melee.winnerParticipant.user.name}<span className="block font-mono text-xs text-zinc-500">{action.melee.winnerParticipantId}</span></> : "Kein Sieger festgelegt" : "—"}</td>
               <td className="p-3">{action.wounds.length ? <ul className="space-y-2">{action.wounds.map((wound) => <li key={wound.id}><FigureLabel figure={wound.figure} /><span className="tabular-nums">{wound.woundsBefore} → {wound.woundsAfter}</span></li>)}</ul> : "—"}</td>
-              <td className="p-3 font-mono text-xs text-zinc-500">{action.id}</td>
-              <td className="p-3 font-mono text-xs text-zinc-500">{action.phaseId}</td>
             </tr>)}
-            {!actions.length && <tr><td colSpan={12} className="p-8 text-center text-zinc-500">Noch keine Aktionen in diesem Spiel.</td></tr>}
+            {!actions.length && <tr><td colSpan={9} className="p-8 text-center text-zinc-500">Noch keine Aktionen in diesem Spiel.</td></tr>}
           </tbody>
         </table>
       </div>

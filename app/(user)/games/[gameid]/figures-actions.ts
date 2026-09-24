@@ -56,6 +56,7 @@ export async function addFigure(gameId: string, form: FormData) {
         data: {
           gameId,
           number,
+          short: character.short,
           characterId,
           participantId: participant.id,
           initialFightValueNear: character.fightValueNear,

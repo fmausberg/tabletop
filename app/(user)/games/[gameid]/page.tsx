@@ -19,6 +19,7 @@ export default async function GameDetailsPage({ params }: { params: Promise<{ ga
       <header>
         <Link href="/games" className="text-sm underline underline-offset-4">Zurück zu Games</Link>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight">{game.name}</h1>
+        <Link href={`/games/${game.id}/board`} className="mt-4 inline-block rounded-md border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800">2D-Spielfeld öffnen</Link>
       </header>
 
       <MasterDataSection game={game} />
