@@ -21,6 +21,30 @@ enum PhaseType {
   COMBAT
 }
 
+enum Race {
+  DWARF
+  HUMAN
+  ORC
+  TROLL
+  ELF
+  HOBBIT
+  HORSE
+  WARG
+  ENT
+  OTHER
+}
+
+enum ActionType {
+  SHOT
+  MELEE
+}
+
+enum ShotResult {
+  MISS
+  HIT_NO_WOUND
+  WOUND
+}
+
 model User {
   id    String @id @default(cuid())
   name  String
@@ -44,6 +68,8 @@ model Character {
   number Int?          @unique
   name   String
   type   CharacterType
+  race   Race          @default(OTHER)
+  points Int           @default(0)
 
   fightValueNear Int
   fightValueFar  Int?
@@ -82,6 +108,8 @@ model GameParticipant {
   initiativesWon Round[]     @relation("InitiativeWinner")
   phaseTurns     PhaseTurn[]
 
+  meleesWon MeleeAction[] @relation("MeleeWinner")
+
   @@unique([gameId, userId])
 }
 
@@ -91,6 +119,7 @@ model Figure {
   game        Game      @relation(fields: [gameId], references: [id])
   characterId String
   character   Character @relation(fields: [characterId], references: [id])
+  number      Int?
 
   participantId String
   participant   GameParticipant @relation(fields: [participantId], references: [id])
@@ -118,7 +147,12 @@ model Figure {
   removed        Boolean @default(false)
 
   movementSteps MovementStep[]
+  shotsFired    ShotAction[]     @relation("ShotsFired")
+  shotsReceived ShotAction[]     @relation("ShotsReceived")
+  melees        MeleeCombatant[]
+  woundChanges  WoundChange[]
 
+  @@unique([gameId, participantId, characterId, number])
   @@index([gameId, participantId])
 }
 
@@ -144,6 +178,7 @@ model RoundPhase {
 
   turns         PhaseTurn[]
   movementSteps MovementStep[]
+  actions       GameAction[]
 
   @@unique([roundId, type])
 }
@@ -186,4 +221,71 @@ model MovementStep {
 
   @@unique([phaseId, sequence])
   @@index([figureId, phaseId])
+}
+
+model GameAction {
+  id      String     @id @default(cuid())
+  phaseId String
+  phase   RoundPhase @relation(fields: [phaseId], references: [id])
+
+  type     ActionType
+  sequence Int
+
+  shot   ShotAction?
+  melee  MeleeAction?
+  wounds WoundChange[]
+
+  @@unique([phaseId, sequence])
+}
+
+model ShotAction {
+  id       String     @id @default(cuid())
+  actionId String     @unique
+  action   GameAction @relation(fields: [actionId], references: [id])
+
+  shooterId String
+  shooter   Figure @relation("ShotsFired", fields: [shooterId], references: [id])
+
+  targetId String
+  target   Figure @relation("ShotsReceived", fields: [targetId], references: [id])
+
+  result ShotResult
+}
+
+model MeleeAction {
+  id       String     @id @default(cuid())
+  actionId String     @unique
+  action   GameAction @relation(fields: [actionId], references: [id])
+
+  // Null, wenn noch kein Sieger feststeht oder das Ergebnis
+  // nach den Spielregeln keinen Sieger hat.
+  winnerParticipantId String?
+  winnerParticipant   GameParticipant? @relation("MeleeWinner", fields: [winnerParticipantId], references: [id])
+
+  combatants MeleeCombatant[]
+}
+
+model MeleeCombatant {
+  id      String      @id @default(cuid())
+  meleeId String
+  melee   MeleeAction @relation(fields: [meleeId], references: [id])
+
+  figureId String
+  figure   Figure @relation(fields: [figureId], references: [id])
+
+  @@unique([meleeId, figureId])
+}
+
+model WoundChange {
+  id       String     @id @default(cuid())
+  actionId String
+  action   GameAction @relation(fields: [actionId], references: [id])
+
+  figureId String
+  figure   Figure @relation(fields: [figureId], references: [id])
+
+  woundsBefore Int
+  woundsAfter  Int
+
+  @@index([figureId, actionId])
 }

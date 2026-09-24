@@ -7,6 +7,7 @@ const links = [
   { href: "/characters", label: "Characters" },
   { href: "/games", label: "Games" },
   { href: "/boards", label: "Boards" },
+  { href: "/user", label: "User" },
 ];
 
 export function UserNavigation() {

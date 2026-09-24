@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 
 type Row = { id: string; name: string; locked?: boolean; [key: string]: string | number | boolean | null | undefined };
-type Field = { name: string; label: string; type?: "number" | "select"; optional?: boolean; step?: string; min?: number; options?: { value: string; label: string }[] };
+type Field = { name: string; label: string; type?: "number" | "email" | "select"; optional?: boolean; step?: string; min?: number; options?: { value: string; label: string }[] };
 type Result = { error: string | null };
 type Props = {
   title: string;
