@@ -1,7 +1,22 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+
+export async function deleteFigure(gameId: string, figureId: string) {
+  try {
+    await prisma.figure.delete({ where: { id: figureId, gameId } });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2003") return { error: "Diese Figur hat bereits Bewegungen oder Aktionen und kann nicht gelöscht werden." };
+      if (error.code === "P2025") return { error: "Die Figur wurde nicht in diesem Spiel gefunden. Bitte lade die Seite neu." };
+    }
+    return { error: "Die Figur konnte nicht gelöscht werden. Bitte versuche es erneut." };
+  }
+  revalidatePath(`/games/${gameId}`);
+  return { error: null };
+}
 
 export async function addFigure(gameId: string, form: FormData) {
   const characterId = String(form.get("characterId") ?? "").trim();
