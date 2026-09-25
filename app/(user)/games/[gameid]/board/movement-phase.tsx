@@ -98,8 +98,8 @@ export function movementPhase(data: BoardData, selectedId: string | null,
       <div><dt className="text-zinc-500">Verbleibende Bewegung</dt><dd>{remainingMovement(selected.speedCm, selected.movementDistanceCm).toFixed(1)} cm</dd></div>
       <div><dt className="text-zinc-500">Nahkampf</dt><dd>{selected.engaged ? "Gebunden" : "Nicht gebunden"}</dd></div>
       <div><dt className="text-zinc-500">Geplante Bewegung</dt><dd className="tabular-nums">{cursorWorld && selected.position
-      ? `${Math.hypot(cursorWorld.x - positionOf(selected).x, cursorWorld.y - positionOf(selected).y).toFixed(1)} cm`
-      : "—"}</dd></div>
+        ? `${Math.hypot(cursorWorld.x - positionOf(selected).x, cursorWorld.y - positionOf(selected).y).toFixed(1)} cm`
+        : "—"}</dd></div>
     </> : null,
   };
 }

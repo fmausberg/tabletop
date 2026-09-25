@@ -34,7 +34,8 @@ export function calculateMovement(
     const x = attacked.position.x - current.x;
     const y = attacked.position.y - current.y;
     const centerDistance = Math.hypot(x, y);
-    const travelDistance = Math.max(0, centerDistance - baseDiameterCm / 2 - attacked.baseDiameterCm / 2);
+    const baseContactDistance = baseDiameterCm / 2 + attacked.baseDiameterCm / 2;
+    const travelDistance = Math.max(0, centerDistance - baseContactDistance);
     const factor = centerDistance > 0 ? travelDistance / centerDistance : 0;
     return {
       target: { x: current.x + x * factor, y: current.y + y * factor },
