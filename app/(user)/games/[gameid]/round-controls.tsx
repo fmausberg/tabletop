@@ -35,6 +35,9 @@ export function RoundControls({ gameId, round, phase }: Props) {
       try {
         const result = await advanceRound(gameId, round, phase);
         if (result.error) setError(result.error);
+        else if ("combatSummary" in result && result.combatSummary) {
+          setMessage(`Nächste Runde gestartet. ${result.combatSummary.dead} tote Figuren entfernt, ${result.combatSummary.retreated} Figuren zurückgewichen.`);
+        }
         else setMessage(result.initiativeWinnerName
           ? `${result.initiativeWinnerName} gewinnt die Initiative. Bewegungsphase gestartet.`
           : nextPhase === "SHOOTING" ? "Schussphase gestartet."
@@ -60,6 +63,7 @@ export function RoundControls({ gameId, round, phase }: Props) {
         </label>
         {phase === "MOVEMENT" && <MovementControls gameId={gameId} round={round} pending={pending} run={run} />}
       </div>
+      {phase === "COMBAT" && <p className="mt-2 text-sm text-zinc-500">Beim Rundenwechsel werden tote Figuren entfernt und überlebende Verlierer zurückgeschoben.</p>}
       <p role="status" className="mt-2 text-sm text-zinc-500">{pending ? "Speichern…" : message}</p>
       {error && <p role="alert" className="mt-2 text-sm text-red-600">{error}</p>}
     </section>

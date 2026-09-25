@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import type { PhaseType, Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { nextPhaseInRound, phasesForRound } from "./game-phases";
+import { CombatRoundEndError, finishCombatRound } from "./combat/combat-round-end";
 
 async function ensurePhase(tx: Prisma.TransactionClient, gameId: string, number: number, type: PhaseType) {
   const round = await tx.round.upsert({
@@ -61,14 +62,17 @@ export async function advanceRound(gameId: string, expectedRound: number, expect
       }
 
       if (game.currentRound >= 2147483647) return { error: "Die maximale Rundennummer ist erreicht." };
+      const combatSummary = game.currentPhase === "COMBAT"
+        ? await finishCombatRound(tx, gameId, game.currentRound) : null;
       const nextRound = game.currentRound + 1;
       await ensurePhase(tx, gameId, nextRound, "INITIATIVE");
       await tx.game.update({ where: { id: gameId }, data: { currentRound: nextRound, currentPhase: "INITIATIVE" } });
-      return { error: null, initiativeWinnerName };
-    });
+      return { error: null, initiativeWinnerName, combatSummary };
+    }, { timeout: 15000 });
     refreshProgress(gameId);
     return result;
-  } catch {
+  } catch (error) {
+    if (error instanceof CombatRoundEndError) return { error: error.message };
     return { error: "Die Runde konnte nicht geändert werden. Bitte versuche es erneut." };
   }
 }

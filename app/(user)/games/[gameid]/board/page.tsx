@@ -6,32 +6,39 @@ import { phaseOrder } from "../game-phases";
 import { BoardViewer } from "./board-viewer";
 import type { BoardData } from "./board-model";
 import { RoundControls } from "../round-controls";
+import { CombatSection } from "../combat/combat-section";
+import { BoardPositionPreviewProvider } from "./board-position-preview";
+import { readCombatData } from "../combat/combat-data";
 
 export const metadata: Metadata = { title: "Spielfeld | Tabletop" };
 
 export default async function BoardPage({ params }: { params: Promise<{ gameid: string }> }) {
   const { gameid } = await params;
-  const game = await prisma.game.findUnique({
-    where: { id: gameid },
-    include: {
-      board: true,
-      participants: { orderBy: { id: "asc" }, include: { user: { select: { name: true } } } },
-      figures: {
-        orderBy: [{ number: "asc" }, { id: "asc" }],
-        include: {
-          character: { select: { name: true } },
-          movementSteps: {
-            where: { phase: { round: { gameId: gameid } } },
-            select: { fromXcm: true, fromYcm: true, toXcm: true, toYcm: true, sequence: true, phase: { select: { type: true, round: { select: { number: true } } } } },
-          },
-          melees: {
-            where: { melee: { action: { phase: { round: { gameId: gameid } } } } },
-            select: { melee: { select: { action: { select: { phase: { select: { round: { select: { number: true } } } } } } } } },
+  const { game, combatData } = await prisma.$transaction(async (tx) => {
+    const game = await tx.game.findUnique({
+      where: { id: gameid },
+      include: {
+        board: true,
+        participants: { orderBy: { id: "asc" }, include: { user: { select: { name: true } } } },
+        figures: {
+          orderBy: [{ number: "asc" }, { id: "asc" }],
+          include: {
+            character: { select: { name: true } },
+            movementSteps: {
+              where: { phase: { round: { gameId: gameid } } },
+              select: { fromXcm: true, fromYcm: true, toXcm: true, toYcm: true, sequence: true, phase: { select: { type: true, round: { select: { number: true } } } } },
+            },
+            melees: {
+              where: { melee: { action: { phase: { round: { gameId: gameid } } } } },
+              select: { melee: { select: { action: { select: { phase: { select: { round: { select: { number: true } } } } } } } } },
+            },
           },
         },
       },
-    },
-  });
+    });
+    const combatData = game?.currentPhase === "COMBAT" ? await readCombatData(tx, gameid) : null;
+    return { game, combatData };
+  }, { isolationLevel: "RepeatableRead" });
   if (!game) notFound();
 
   const data: BoardData = {
@@ -74,9 +81,12 @@ export default async function BoardPage({ params }: { params: Promise<{ gameid: 
         {game.name} · Spielfeld <span className="text-sm font-normal text-zinc-500">· {game.board.name} · {data.lengthCm} × {data.widthCm} cm</span>
       </h1>
       <RoundControls gameId={game.id} round={game.currentRound} phase={game.currentPhase} />
-      {![data.lengthCm, data.widthCm].every((value) => Number.isFinite(value) && value > 0)
-        ? <p role="alert">Das Board benötigt eine gültige Länge und Breite größer als 0.</p>
-        : <BoardViewer data={data} />}
+      <BoardPositionPreviewProvider scope={JSON.stringify([data, combatData?.revision])}>
+        {![data.lengthCm, data.widthCm].every((value) => Number.isFinite(value) && value > 0)
+          ? <p role="alert">Das Board benötigt eine gültige Länge und Breite größer als 0.</p>
+          : <BoardViewer data={data} />}
+        {combatData && <CombatSection data={combatData} />}
+      </BoardPositionPreviewProvider>
     </main>
   );
 }

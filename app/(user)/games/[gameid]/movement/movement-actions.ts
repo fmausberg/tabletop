@@ -51,7 +51,9 @@ export async function moveFigure(gameId: string, figureId: string, x: number, y:
         include: {
           melees: {
             where: { melee: { action: { phase: { round: { gameId, number: game.currentRound } } } } },
-            select: { meleeId: true },
+            select: { meleeId: true, melee: { select: {
+              winnerParticipantId: true, action: { select: { wounds: { select: { id: true } } } },
+            } } },
           },
           movementSteps: {
             where: { phase: { round: { gameId } } },
@@ -80,6 +82,10 @@ export async function moveFigure(gameId: string, figureId: string, x: number, y:
         })),
       );
       const attacked = positionedOpponents.find(({ opponent }) => opponent.id === attackedId);
+      // A manual return to MOVEMENT must not change an already evaluated melee.
+      if (attacked?.opponent.melees.some(({ melee }) => melee.winnerParticipantId !== null || melee.action.wounds.length > 0)) {
+        return { error: "Dieser Nahkampf wurde bereits ausgewertet. Setze seine Auswertung zuerst in der Nahkampfphase zurück." };
+      }
       if (!attacked && remainingDistance <= 1e-9) {
         return { error: "Die Figur hat in dieser Runde keine Bewegung mehr übrig." };
       }

@@ -19,10 +19,12 @@ export async function ActionsSection({ gameId }: { gameId: string }) {
     include: {
       phase: { select: { type: true, round: { select: { number: true } } } },
       shot: { include: { shooter: { select: figureSelect }, target: { select: figureSelect } } },
-      melee: { include: {
-        winnerParticipant: { select: { user: { select: { name: true } } } },
-        combatants: { orderBy: { id: "asc" }, include: { figure: { select: figureSelect } } },
-      } },
+      melee: {
+        include: {
+          winnerParticipant: { select: { user: { select: { name: true } } } },
+          combatants: { orderBy: { id: "asc" }, include: { figure: { select: figureSelect } } },
+        }
+      },
       wounds: { orderBy: { id: "asc" }, include: { figure: { select: figureSelect } } },
     },
   });
@@ -50,7 +52,7 @@ export async function ActionsSection({ gameId }: { gameId: string }) {
               <td className="p-3">{action.shot ? shotLabels[action.shot.result] : "—"}</td>
               <td className="p-3">{action.melee?.combatants.length ? <ul className="space-y-2">{action.melee.combatants.map((combatant) => <li key={combatant.id}><FigureLabel figure={combatant.figure} /></li>)}</ul> : "—"}</td>
               <td className="p-3">{action.melee ? action.melee.winnerParticipant ? <>{action.melee.winnerParticipant.user.name}<span className="block font-mono text-xs text-zinc-500">{action.melee.winnerParticipantId}</span></> : "Kein Sieger festgelegt" : "—"}</td>
-              <td className="p-3">{action.wounds.length ? <ul className="space-y-2">{action.wounds.map((wound) => <li key={wound.id}><FigureLabel figure={wound.figure} /><span className="tabular-nums">{wound.woundsBefore} → {wound.woundsAfter}</span></li>)}</ul> : "—"}</td>
+              <td className="p-3">{action.wounds.length ? <ul className="space-y-2">{action.wounds.map((wound) => <li key={wound.id}>"<FigureLabel figure={wound.figure} />" <span className="tabular-nums">{wound.woundsBefore} → {wound.woundsAfter}</span></li>)}</ul> : "—"}</td>
             </tr>)}
             {!actions.length && <tr><td colSpan={9} className="p-8 text-center text-zinc-500">Noch keine Aktionen in diesem Spiel.</td></tr>}
           </tbody>

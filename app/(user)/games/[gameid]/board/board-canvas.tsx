@@ -7,6 +7,8 @@ import { fitBoard, zoomAt, type BoardData, type View } from "./board-model";
 import { DicePanel } from "./dice-panel";
 import { useBoardPhase } from "./use-board-phase";
 import { useBoardFeedback } from "./use-board-feedback";
+import { useBoardPositionPreview } from "./board-position-preview";
+import { BoardPositionPreviewLayer } from "./board-position-preview-layer";
 
 export default function BoardCanvas({ data }: { data: BoardData }) {
   const container = useRef<HTMLDivElement>(null);
@@ -18,13 +20,14 @@ export default function BoardCanvas({ data }: { data: BoardData }) {
   const [cursorWorld, setCursorWorld] = useState<{ x: number; y: number } | null>(null);
   const [panning, setPanning] = useState(false);
   const feedback = useBoardFeedback();
+  const { preview } = useBoardPositionPreview();
   const fitted = fitBoard(size.width, size.height, data.lengthCm, data.widthCm);
   const camera = view ?? fitted;
   const phase = useBoardPhase(data, camera, selectedId, setSelectedId, cursorWorld, feedback);
   const figures = data.figures.filter((figure) => figure.position !== null && !figure.removed);
   const selected = data.figures.find((figure) => figure.id === selectedId && phase.canSelect(figure));
   const player = (id: string) => data.participants.find((participant) => participant.id === id);
-  const positionOf = phase.positionOf;
+  const positionOf = (figure: BoardData["figures"][number]) => preview?.positions[figure.id] ?? phase.positionOf(figure);
 
   function worldPosition(event: { clientX: number; clientY: number }) {
     if (!stage.current) return null;
@@ -58,7 +61,7 @@ export default function BoardCanvas({ data }: { data: BoardData }) {
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-
+        {preview && <p role="status" className="text-sm text-amber-700 dark:text-amber-400">Positionsvorschau – noch nicht gespeichert. Gestrichelte Basen zeigen die bisherigen Positionen.</p>}
       </div>
       <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)_260px]">
         <DicePanel participants={data.participants} />
@@ -111,6 +114,7 @@ export default function BoardCanvas({ data }: { data: BoardData }) {
               <Group x={camera.x} y={camera.y} scaleX={camera.scale} scaleY={camera.scale}>
                 <Rect width={data.lengthCm} height={data.widthCm} fill="#e7e5d5" stroke="#a3a38c" strokeWidth={2} strokeScaleEnabled={false} />
                 {phase.preview}
+                <BoardPositionPreviewLayer data={data} />
                 {figures.map((figure) => {
                   const diameter = figure.baseDiameterCm;
                   const label = figure.short.trim() || "X";
@@ -135,7 +139,7 @@ export default function BoardCanvas({ data }: { data: BoardData }) {
                       name="figure"
                       radius={radius}
                       fill={player(figure.participantId)?.color ?? "#64748b"}
-                      stroke={selectedId === figure.id ? "#ffffff" : "#1e293b"}
+                      stroke={selectedId === figure.id ? "#ffffff" : preview?.positions[figure.id] ? "#22c55e" : "#1e293b"}
                       strokeWidth={selectedId === figure.id ? 3 : 1}
                       strokeScaleEnabled={false}
                     />
