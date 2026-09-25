@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { phaseLabels } from "./game-phases";
+import type { PhaseType } from "@/generated/prisma/enums";
+import { phaseLabels } from "../game-phases";
 import { newestMovementFirst } from "./movements-order";
 import { MovementsUndoButton } from "./movements-undo-button";
-import { tableWrapper, table, rowBorder } from "./table-styles";
+import { tableWrapper, table, rowBorder } from "../table-styles";
 
 const cm = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
@@ -12,7 +13,7 @@ function directionDegrees(fromX: number, fromY: number, toX: number, toY: number
   return x === 0 && y === 0 ? null : (Math.atan2(x, -y) * 180 / Math.PI + 360) % 360;
 }
 
-export async function MovementsSection({ gameId }: { gameId: string }) {
+export async function MovementsSection({ gameId, round, phase }: { gameId: string; round: number; phase: PhaseType }) {
   const movements = await prisma.movementStep.findMany({
     where: { phase: { round: { gameId } } },
     include: {
@@ -22,12 +23,14 @@ export async function MovementsSection({ gameId }: { gameId: string }) {
     },
   });
   movements.sort(newestMovementFirst);
+  const latest = movements[0];
+  const undoId = latest?.phase.type === "MOVEMENT" && latest.phase.round.number === round ? latest.id : null;
 
   return (
   <section aria-labelledby="movements-title">
     <h2 id="movements-title" className="mb-2 text-xl font-semibold">Movements <span className="text-sm font-normal text-zinc-500">({movements.length})</span></h2>
     <p className="mb-4 text-sm text-zinc-500">Neueste Bewegung zuerst, nach Runde, Phase und Schritt. Richtung als Winkel: 0° oben, 90° rechts.</p>
-    <MovementsUndoButton gameId={gameId} latestId={movements[0]?.id ?? null} />
+    {phase === "MOVEMENT" && <MovementsUndoButton gameId={gameId} round={round} latestId={undoId} />}
     <div className={tableWrapper}>
       <table className={table}>
         <caption className="sr-only">MovementSteps in umgekehrter chronologischer Spielreihenfolge</caption>

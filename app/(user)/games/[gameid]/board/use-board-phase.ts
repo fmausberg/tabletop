@@ -2,10 +2,10 @@
 
 import type { BoardData, View } from "./board-model";
 import type { BoardPhase } from "./board-phase";
-import type { Position } from "./movement-rules";
+import type { Position } from "../movement/movement-rules";
 import type { BoardFeedback } from "./use-board-feedback";
-import { usePlacementPhase } from "./placement-phase";
-import { movementPhase } from "./movement-phase";
+import { usePlacementPhase } from "../placement/placement-phase";
+import { movementPhase } from "../movement/movement-phase";
 
 const passivePhase: BoardPhase = {
   canSelect: (figure) => !figure.removed && Boolean(figure.position),

@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { phaseOrder } from "../game-phases";
 import { BoardViewer } from "./board-viewer";
 import type { BoardData } from "./board-model";
-import { RoundControls } from "./round-controls";
+import { RoundControls } from "../round-controls";
 
 export const metadata: Metadata = { title: "Spielfeld | Tabletop" };
 

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { undoLastMovement } from "./movements-actions";
+import { undoLastMovement } from "./movement-reset-actions";
 
-export function MovementsUndoButton({ gameId, latestId }: { gameId: string; latestId: string | null }) {
+export function MovementsUndoButton({ gameId, round, latestId }: { gameId: string; round: number; latestId: string | null }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -18,7 +18,7 @@ export function MovementsUndoButton({ gameId, latestId }: { gameId: string; late
           setMessage("");
           startTransition(async () => {
             try {
-              const result = await undoLastMovement(gameId, latestId);
+              const result = await undoLastMovement(gameId, round, latestId);
               if (result.error) setError(result.error);
               else setMessage("Letzter Zug rückgängig gemacht.");
             } catch {

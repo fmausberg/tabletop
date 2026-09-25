@@ -5,7 +5,7 @@ import { MasterDataSection } from "./master-data-section";
 import { ParticipantsSection } from "./participants-section";
 import { FiguresSection } from "./figures-section";
 import { ActionsSection } from "./actions-section";
-import { MovementsSection } from "./movements-section";
+import { MovementsSection } from "./movement/movements-section";
 
 export const metadata: Metadata = { title: "Spieldetails | Tabletop" };
 
@@ -26,7 +26,7 @@ export default async function GameDetailsPage({ params }: { params: Promise<{ ga
       <ParticipantsSection gameId={game.id} users={players} participants={game.participants} />
       <FiguresSection {...data} />
       <ActionsSection gameId={game.id} />
-      <MovementsSection gameId={game.id} />
+      <MovementsSection gameId={game.id} round={game.currentRound} phase={game.currentPhase} />
     </main>
   );
 }

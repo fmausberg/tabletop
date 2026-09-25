@@ -1,9 +1,9 @@
 "use client";
 
 import { Circle, Line } from "react-konva";
-import type { BoardData, BoardFigure } from "./board-model";
-import type { BoardPhase } from "./board-phase";
-import type { BoardFeedback } from "./use-board-feedback";
+import type { BoardData, BoardFigure } from "../board/board-model";
+import type { BoardPhase } from "../board/board-phase";
+import type { BoardFeedback } from "../board/use-board-feedback";
 import { calculateMovement, remainingMovement, type Position } from "./movement-rules";
 import { moveFigure } from "./movement-actions";
 

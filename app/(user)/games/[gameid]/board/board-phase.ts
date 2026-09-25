@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { KonvaEventObject } from "konva/lib/Node";
 import type { BoardFigure } from "./board-model";
-import type { Position } from "./movement-rules";
+import type { Position } from "../movement/movement-rules";
 
 export type BoardPhase = {
   canSelect: (figure: BoardFigure) => boolean;

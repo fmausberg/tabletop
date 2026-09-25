@@ -1,5 +1,5 @@
 import type { PhaseType } from "@/generated/prisma/enums";
-import { phaseOrder } from "./game-phases";
+import { phaseOrder } from "../game-phases";
 
 type OrderedMovement = { sequence: number; phase: { type: PhaseType; round: { number: number } } };
 

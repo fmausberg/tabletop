@@ -2,9 +2,9 @@
 
 import { useState, useTransition } from "react";
 import type { PhaseType } from "@/generated/prisma/enums";
-import { nextPhaseInRound, phaseLabels, phasesForRound } from "../game-phases";
-import { advanceRound, changePhase } from "../round-actions";
-import { MovementControls, type RunRoundAction } from "./movement-controls";
+import { nextPhaseInRound, phaseLabels, phasesForRound } from "./game-phases";
+import { advanceRound, changePhase } from "./round-actions";
+import { MovementControls, type RunRoundAction } from "./movement/movement-controls";
 
 type Props = { gameId: string; round: number; phase: PhaseType };
 

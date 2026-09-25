@@ -1,4 +1,4 @@
-import type { BoardData } from "./board-model";
+import type { BoardData } from "../board/board-model";
 
 type Props = { data: BoardData; selectedId: string | null; pending: boolean; onSelect: (id: string) => void };
 
