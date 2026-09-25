@@ -32,11 +32,11 @@ export function RoundControls({ gameId, round, phase }: Props) {
     setMessage("");
     startTransition(async () => {
       try {
-        const result = await advanceRound(gameId, round);
+        const result = await advanceRound(gameId, round, phase);
         if (result.error) setError(result.error);
         else setMessage(result.initiativeWinnerName
           ? `${result.initiativeWinnerName} gewinnt die Initiative. Bewegungsphase gestartet.`
-          : "Nächste Runde gestartet.");
+          : phase === "MOVEMENT" ? "Schussphase gestartet." : "Nächste Runde gestartet.");
       } catch {
         setError("Der Spielstand konnte nicht gespeichert werden. Bitte versuche es erneut.");
       }
@@ -47,7 +47,7 @@ export function RoundControls({ gameId, round, phase }: Props) {
     <section aria-label="Rundensteuerung" className="mb-5 rounded-lg border border-zinc-300 p-4 dark:border-zinc-700">
       <div className="flex flex-wrap items-end gap-4">
         <div><p className="text-sm text-zinc-500">Aktuelle Runde</p><p className="text-2xl font-semibold tabular-nums" data-testid="current-round">{round}</p></div>
-        <button type="button" disabled={pending} className="rounded-md border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800" onClick={nextRound}>{phase === "INITIATIVE" ? "Initiative auswürfeln" : "Nächste Runde"}</button>
+        <button type="button" disabled={pending} className="rounded-md border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800" onClick={nextRound}>{phase === "INITIATIVE" ? "Initiative auswürfeln" : phase === "MOVEMENT" ? "Nächste Phase" : "Nächste Runde"}</button>
         <label className="text-sm">Aktuelle Phase
           <select className="mt-1 block rounded-md border border-zinc-300 bg-transparent px-3 py-2 disabled:opacity-50 dark:border-zinc-700" value={phase} disabled={pending} onChange={(event) => {
             const selected = event.target.value as PhaseType;

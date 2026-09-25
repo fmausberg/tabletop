@@ -22,14 +22,14 @@ function refreshProgress(gameId: string) {
   revalidatePath(`/games/${gameId}/board`);
 }
 
-export async function advanceRound(gameId: string, expectedRound: number) {
+export async function advanceRound(gameId: string, expectedRound: number, expectedPhase: PhaseType) {
   try {
     const result = await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM "Game" WHERE id = ${gameId} FOR UPDATE`;
       const game = await tx.game.findUnique({ where: { id: gameId } });
       if (!game) return { error: "Das Spiel existiert nicht mehr." };
       if (game.currentRound !== expectedRound) return { error: "Die Runde wurde bereits geändert. Bitte lade die Seite neu." };
-      if (game.currentRound >= 2147483647) return { error: "Die maximale Rundennummer ist erreicht." };
+      if (game.currentPhase !== expectedPhase) return { error: "Die Phase wurde bereits geändert. Bitte lade die Seite neu." };
       await ensurePhase(tx, gameId, game.currentRound, game.currentPhase);
 
       let initiativeWinnerName: string | null = null;
@@ -53,6 +53,13 @@ export async function advanceRound(gameId: string, expectedRound: number) {
         return { error: null, initiativeWinnerName };
       }
 
+      if (game.currentPhase === "MOVEMENT") {
+        await ensurePhase(tx, gameId, game.currentRound, "SHOOTING");
+        await tx.game.update({ where: { id: gameId }, data: { currentPhase: "SHOOTING" } });
+        return { error: null, initiativeWinnerName };
+      }
+
+      if (game.currentRound >= 2147483647) return { error: "Die maximale Rundennummer ist erreicht." };
       const nextRound = game.currentRound + 1;
       await ensurePhase(tx, gameId, nextRound, "INITIATIVE");
       await tx.game.update({ where: { id: gameId }, data: { currentRound: nextRound, currentPhase: "INITIATIVE" } });
