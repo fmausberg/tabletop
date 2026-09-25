@@ -4,7 +4,7 @@ import { randomInt } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import type { PhaseType, Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { phasesForRound } from "./game-phases";
+import { nextPhaseInRound, phasesForRound } from "./game-phases";
 
 async function ensurePhase(tx: Prisma.TransactionClient, gameId: string, number: number, type: PhaseType) {
   const round = await tx.round.upsert({
@@ -53,9 +53,10 @@ export async function advanceRound(gameId: string, expectedRound: number, expect
         return { error: null, initiativeWinnerName };
       }
 
-      if (game.currentPhase === "MOVEMENT") {
-        await ensurePhase(tx, gameId, game.currentRound, "SHOOTING");
-        await tx.game.update({ where: { id: gameId }, data: { currentPhase: "SHOOTING" } });
+      const nextPhase = nextPhaseInRound(game.currentRound, game.currentPhase);
+      if (nextPhase) {
+        await ensurePhase(tx, gameId, game.currentRound, nextPhase);
+        await tx.game.update({ where: { id: gameId }, data: { currentPhase: nextPhase } });
         return { error: null, initiativeWinnerName };
       }
 

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { calculateMovement, remainingMovement } from "./movement-rules";
 import { phaseOrder } from "../game-phases";
 
 function validPosition(x: number, y: number, radius: number, lengthCm: number, widthCm: number) {
@@ -70,39 +71,19 @@ export async function moveFigure(gameId: string, figureId: string, x: number, y:
       const distanceMoved = figure.movementSteps
         .filter((step) => step.phase.type === "MOVEMENT" && step.phase.round.number === game.currentRound)
         .reduce((total, step) => total + Math.hypot(step.toXcm - step.fromXcm, step.toYcm - step.fromYcm), 0);
-      const remainingDistance = Math.max(0, figure.speedCm - distanceMoved);
-      const attacked = positionedOpponents
-        .filter(({ opponent, position }) => {
-          const centerDistance = Math.hypot(previous.toXcm - position.toXcm, previous.toYcm - position.toYcm);
-          const basesDistance = figure.baseDiameterCm / 2 + opponent.baseDiameterCm / 2;
-          const targetDistance = Math.hypot(x - position.toXcm, y - position.toYcm);
-          return opponent.melees.length
-            ? centerDistance <= remainingDistance + basesDistance + 1e-9 && targetDistance <= basesDistance
-            : targetDistance <= basesDistance + 2;
-        })
-        .sort((a, b) => Math.hypot(x - a.position.toXcm, y - a.position.toYcm)
-          - Math.hypot(x - b.position.toXcm, y - b.position.toYcm))[0];
-
-      let limited = false;
-      let targetX: number;
-      let targetY: number;
-      if (attacked) {
-        const directionX = attacked.position.toXcm - previous.toXcm;
-        const directionY = attacked.position.toYcm - previous.toYcm;
-        const centerDistance = Math.hypot(directionX, directionY);
-        const baseContactDistance = figure.baseDiameterCm / 2 + attacked.opponent.baseDiameterCm / 2;
-        const travelDistance = Math.max(0, centerDistance - baseContactDistance);
-        const factor = centerDistance > 0 ? travelDistance / centerDistance : 0;
-        targetX = previous.toXcm + directionX * factor;
-        targetY = previous.toYcm + directionY * factor;
-      } else {
-        if (remainingDistance <= 1e-9) return { error: "Die Figur hat in dieser Runde keine Bewegung mehr übrig." };
-        const nextDistance = Math.hypot(x - previous.toXcm, y - previous.toYcm);
-        limited = nextDistance > remainingDistance;
-        const factor = limited ? remainingDistance / nextDistance : 1;
-        targetX = previous.toXcm + (x - previous.toXcm) * factor;
-        targetY = previous.toYcm + (y - previous.toYcm) * factor;
+      const remainingDistance = remainingMovement(figure.speedCm, distanceMoved);
+      const { target, attackedId, limited } = calculateMovement(
+        { x: previous.toXcm, y: previous.toYcm }, { x, y }, figure.baseDiameterCm, remainingDistance,
+        positionedOpponents.map(({ opponent, position }) => ({
+          id: opponent.id, baseDiameterCm: opponent.baseDiameterCm,
+          engaged: opponent.melees.length > 0, position: { x: position.toXcm, y: position.toYcm },
+        })),
+      );
+      const attacked = positionedOpponents.find(({ opponent }) => opponent.id === attackedId);
+      if (!attacked && remainingDistance <= 1e-9) {
+        return { error: "Die Figur hat in dieser Runde keine Bewegung mehr übrig." };
       }
+      const { x: targetX, y: targetY } = target;
       if (!validPosition(targetX, targetY, figure.baseDiameterCm / 2, game.board.lengthCm, game.board.widthCm)) {
         return { error: "Die gesamte Base muss innerhalb des Spielfelds liegen." };
       }
