@@ -10,7 +10,7 @@ function validPosition(x: number, y: number, radius: number, lengthCm: number, w
 }
 
 function refreshBoard(gameId: string) {
-  revalidatePath(`/games/${gameId}/board`);
+  revalidatePath(`/games/${gameId}/board`, "layout");
   revalidatePath(`/games/${gameId}`);
 }
 

@@ -10,7 +10,7 @@ import { useBoardFeedback } from "./use-board-feedback";
 import { useBoardPositionPreview } from "./board-position-preview";
 import { BoardPositionPreviewLayer } from "./board-position-preview-layer";
 
-export default function BoardCanvas({ data }: { data: BoardData }) {
+export default function BoardCanvas({ data, interaction }: { data: BoardData; interaction: BoardData["currentPhase"] | "READ_ONLY" }) {
   const container = useRef<HTMLDivElement>(null);
   const stage = useRef<Konva.Stage>(null);
   const drag = useRef<{ clientX: number; clientY: number; view: View } | null>(null);
@@ -23,7 +23,7 @@ export default function BoardCanvas({ data }: { data: BoardData }) {
   const { preview } = useBoardPositionPreview();
   const fitted = fitBoard(size.width, size.height, data.lengthCm, data.widthCm);
   const camera = view ?? fitted;
-  const phase = useBoardPhase(data, camera, selectedId, setSelectedId, cursorWorld, feedback);
+  const phase = useBoardPhase(data, camera, selectedId, setSelectedId, cursorWorld, feedback, interaction);
   const figures = data.figures.filter((figure) => figure.position !== null && !figure.removed);
   const selected = data.figures.find((figure) => figure.id === selectedId && phase.canSelect(figure));
   const player = (id: string) => data.participants.find((participant) => participant.id === id);

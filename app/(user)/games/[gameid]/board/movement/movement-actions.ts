@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { calculateMovement, remainingMovement } from "./movement-rules";
-import { phaseOrder } from "../game-phases";
+import { phaseOrder } from "../../game-phases";
 
 function validPosition(x: number, y: number, radius: number, lengthCm: number, widthCm: number) {
   return [x, y, radius, lengthCm, widthCm].every(Number.isFinite)
@@ -136,7 +136,7 @@ export async function moveFigure(gameId: string, figureId: string, x: number, y:
       }
       return { error: null, limited, engaged: Boolean(attacked) };
     });
-    revalidatePath(`/games/${gameId}/board`);
+    revalidatePath(`/games/${gameId}/board`, "layout");
     revalidatePath(`/games/${gameId}`);
     return result;
   } catch {

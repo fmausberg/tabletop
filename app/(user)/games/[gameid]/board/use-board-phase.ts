@@ -2,10 +2,10 @@
 
 import type { BoardData, View } from "./board-model";
 import type { BoardPhase } from "./board-phase";
-import type { Position } from "../movement/movement-rules";
+import type { Position } from "./movement/movement-rules";
 import type { BoardFeedback } from "./use-board-feedback";
-import { usePlacementPhase } from "../placement/placement-phase";
-import { movementPhase } from "../movement/movement-phase";
+import { usePlacementPhase } from "./placement/placement-phase";
+import { movementPhase } from "./movement/movement-phase";
 
 const passivePhase: BoardPhase = {
   canSelect: (figure) => !figure.removed && Boolean(figure.position),
@@ -19,10 +19,11 @@ const passivePhase: BoardPhase = {
 };
 
 export function useBoardPhase(data: BoardData, camera: View, selectedId: string | null,
-  select: (id: string | null) => void, cursor: Position | null, feedback: BoardFeedback): BoardPhase {
+  select: (id: string | null) => void, cursor: Position | null, feedback: BoardFeedback, interaction: BoardData["currentPhase"] | "READ_ONLY"): BoardPhase {
   // Keep hook order and placement's optimistic positions stable across phase changes.
   const placement = usePlacementPhase(data, camera, selectedId, select, feedback);
-  switch (data.currentPhase) {
+  if (interaction !== data.currentPhase) return passivePhase;
+  switch (interaction) {
     case "PLACEMENT": return placement;
     case "MOVEMENT": return movementPhase(data, selectedId, cursor, feedback);
     default: return passivePhase;

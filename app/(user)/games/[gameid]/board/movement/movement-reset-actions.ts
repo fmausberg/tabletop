@@ -2,12 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { phaseOrder } from "../game-phases";
+import { phaseOrder } from "../../game-phases";
 import { newestMovementFirst } from "./movements-order";
 
 function refreshGame(gameId: string) {
   revalidatePath(`/games/${gameId}`);
-  revalidatePath(`/games/${gameId}/board`);
+  revalidatePath(`/games/${gameId}/board`, "layout");
 }
 
 export async function undoLastMovement(gameId: string, expectedRound: number, expectedMovementId?: string) {

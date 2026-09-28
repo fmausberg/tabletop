@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { calculateMovement, remainingMovement } from "./movement-rules.ts";
-import { nextPhaseInRound } from "../game-phases.ts";
+import { nextPhaseInRound } from "../../game-phases.ts";
 
 test("free movement is capped along the requested direction", () => {
   assert.deepEqual(calculateMovement({ x: 10, y: 10 }, { x: 16, y: 18 }, 2, 5, []), {

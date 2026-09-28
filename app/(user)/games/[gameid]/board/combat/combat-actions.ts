@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { phaseOrder } from "../game-phases";
+import { phaseOrder } from "../../game-phases";
 import { readCombatData } from "./combat-data";
 import { combatEvaluationIssue, isCombatResolved, type CombatCommand, type CombatData, type CombatEntry } from "./combat-model";
 
@@ -212,7 +212,7 @@ export async function manageCombat(gameId: string, expectedRound: number, revisi
         }
       }
     });
-    revalidatePath(`/games/${gameId}/board`);
+    revalidatePath(`/games/${gameId}/board`, "layout");
     revalidatePath(`/games/${gameId}`);
     return { error: null };
   } catch (error) {

@@ -57,7 +57,7 @@ export async function confirmCombatLayout(gameId: string, round: number, revisio
       if (!input || !validateSeparation(input, plan.offsets).valid) throw new LayoutError("Die Anordnung ist nicht mehr gültig. Es wurden keine Positionen geändert.");
       await storeCombatPositions(tx, current, plan.positions);
     }, { timeout: 15000 });
-    revalidatePath(`/games/${gameId}/board`);
+    revalidatePath(`/games/${gameId}/board`, "layout");
     revalidatePath(`/games/${gameId}`);
     return { error: null };
   } catch (error) {

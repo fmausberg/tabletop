@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
-import { phaseOrder } from "../game-phases.ts";
+import { phaseOrder } from "../../game-phases.ts";
 
 const orderSource = readFileSync(new URL("./movements-order.ts", import.meta.url), "utf8");
 const orderExports = {};
@@ -33,7 +33,7 @@ function fixture(currentPhase, currentRound, steps) {
       if (name === "@/lib/prisma") return { prisma: { $transaction: (callback) => callback(tx) } };
       if (name === "next/cache") return { revalidatePath() {} };
       if (name === "./movements-order") return { newestMovementFirst };
-      if (name === "../game-phases") return {};
+      if (name === "../../game-phases") return {};
       throw new Error(`Unexpected import: ${name}`);
     },
   });

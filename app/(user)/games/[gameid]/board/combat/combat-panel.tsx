@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { manageCombat } from "./combat-actions";
 import { CombatCard } from "./combat-card";
 import { combatAssignmentKey, combatEvaluationIssue, type CombatCommand, type CombatData } from "./combat-model";
-import { useBoardPositionPreview } from "../board/board-position-preview";
+import { useBoardPositionPreview } from "../board-position-preview";
 import { confirmCombatLayout, previewCombatLayout } from "./combat-layout-actions";
 import type { CombatLayoutPreview } from "./combat-layout-model";
 

@@ -1,14 +1,16 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import type { PhaseType } from "@/generated/prisma/enums";
 import { nextPhaseInRound, phaseLabels, phasesForRound } from "./game-phases";
 import { advanceRound, changePhase } from "./round-actions";
-import { MovementControls, type RunRoundAction } from "./movement/movement-controls";
+import { MovementControls, type RunRoundAction } from "./board/movement/movement-controls";
 
 type Props = { gameId: string; round: number; phase: PhaseType };
 
 export function RoundControls({ gameId, round, phase }: Props) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -42,6 +44,7 @@ export function RoundControls({ gameId, round, phase }: Props) {
           ? `${result.initiativeWinnerName} gewinnt die Initiative. Bewegungsphase gestartet.`
           : nextPhase === "SHOOTING" ? "Schussphase gestartet."
             : nextPhase === "COMBAT" ? "Nahkampfphase gestartet." : "Nächste Runde gestartet.");
+        if (!result.error) router.push(`/games/${gameId}/board`);
       } catch {
         setError("Der Spielstand konnte nicht gespeichert werden. Bitte versuche es erneut.");
       }
@@ -56,7 +59,11 @@ export function RoundControls({ gameId, round, phase }: Props) {
         <label className="text-sm">Aktuelle Phase
           <select className="mt-1 block rounded-md border border-zinc-300 bg-transparent px-3 py-2 disabled:opacity-50 dark:border-zinc-700" value={phase} disabled={pending} onChange={(event) => {
             const selected = event.target.value as PhaseType;
-            run(() => changePhase(gameId, round, selected), "Phase gespeichert.");
+            run(async () => {
+              const result = await changePhase(gameId, round, selected, phase);
+              if (!result.error) router.push(`/games/${gameId}/board`);
+              return result;
+            }, "Phase gespeichert.");
           }}>
             {phasesForRound(round).map((value) => <option className="bg-white text-zinc-900" key={value} value={value}>{phaseLabels[value]} ({value})</option>)}
           </select>

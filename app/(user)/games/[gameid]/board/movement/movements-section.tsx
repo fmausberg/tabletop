@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import type { PhaseType } from "@/generated/prisma/enums";
-import { phaseLabels } from "../game-phases";
+import { phaseLabels } from "../../game-phases";
 import { newestMovementFirst } from "./movements-order";
 import { MovementsUndoButton } from "./movements-undo-button";
-import { tableWrapper, table, rowBorder } from "../table-styles";
+import { tableWrapper, table, rowBorder } from "../../table-styles";
 
 const cm = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 

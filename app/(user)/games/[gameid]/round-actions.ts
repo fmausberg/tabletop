@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import type { PhaseType, Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { nextPhaseInRound, phasesForRound } from "./game-phases";
-import { CombatRoundEndError, finishCombatRound } from "./combat/combat-round-end";
+import { CombatRoundEndError, finishCombatRound } from "./board/combat/combat-round-end";
 
 async function ensurePhase(tx: Prisma.TransactionClient, gameId: string, number: number, type: PhaseType) {
   const round = await tx.round.upsert({
@@ -20,7 +20,7 @@ async function ensurePhase(tx: Prisma.TransactionClient, gameId: string, number:
 
 function refreshProgress(gameId: string) {
   revalidatePath(`/games/${gameId}`);
-  revalidatePath(`/games/${gameId}/board`);
+  revalidatePath(`/games/${gameId}/board`, "layout");
 }
 
 export async function advanceRound(gameId: string, expectedRound: number, expectedPhase: PhaseType) {
@@ -77,13 +77,14 @@ export async function advanceRound(gameId: string, expectedRound: number, expect
   }
 }
 
-export async function changePhase(gameId: string, expectedRound: number, phase: PhaseType) {
+export async function changePhase(gameId: string, expectedRound: number, phase: PhaseType, expectedPhase: PhaseType) {
   try {
     const result = await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM "Game" WHERE id = ${gameId} FOR UPDATE`;
       const game = await tx.game.findUnique({ where: { id: gameId } });
       if (!game) return { error: "Das Spiel existiert nicht mehr." };
       if (game.currentRound !== expectedRound) return { error: "Die Runde wurde inzwischen geändert. Bitte wähle die Phase erneut." };
+      if (game.currentPhase !== expectedPhase) return { error: "Die Phase wurde inzwischen geändert. Bitte lade die Ansicht neu." };
       if (!phasesForRound(game.currentRound).includes(phase)) return { error: "Diese Phase ist in der aktuellen Runde nicht erlaubt." };
       await ensurePhase(tx, gameId, game.currentRound, phase);
       await tx.game.update({ where: { id: gameId }, data: { currentPhase: phase } });

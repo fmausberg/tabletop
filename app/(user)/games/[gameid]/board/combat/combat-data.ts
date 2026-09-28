@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Prisma } from "@/generated/prisma/client";
-import { phaseOrder } from "../game-phases";
+import { phaseOrder } from "../../game-phases";
 import type { CombatData } from "./combat-model";
 import { newestMovementFirst } from "../movement/movements-order";
 

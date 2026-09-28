@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import type { BoardData, BoardFigure, View } from "../board/board-model";
-import type { BoardPhase } from "../board/board-phase";
-import type { BoardFeedback } from "../board/use-board-feedback";
+import type { BoardData, BoardFigure, View } from "../board-model";
+import type { BoardPhase } from "../board-phase";
+import type { BoardFeedback } from "../use-board-feedback";
 import type { Position } from "../movement/movement-rules";
 import { movePlacedFigure, placeFigure } from "./placement-actions";
 import { PlacementList } from "./placement-list";

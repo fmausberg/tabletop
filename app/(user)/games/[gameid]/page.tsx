@@ -5,7 +5,7 @@ import { MasterDataSection } from "./master-data-section";
 import { ParticipantsSection } from "./participants-section";
 import { FiguresSection } from "./figures-section";
 import { ActionsSection } from "./actions-section";
-import { MovementsSection } from "./movement/movements-section";
+import { MovementsSection } from "./board/movement/movements-section";
 
 export const metadata: Metadata = { title: "Spieldetails | Tabletop" };
 
