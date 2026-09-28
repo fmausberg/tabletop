@@ -13,6 +13,7 @@ class LayoutError extends Error {}
 
 function checkedData(data: CombatData | null, round: number, revision: string): CombatData {
   if (!data) throw new LayoutError("Das Spiel existiert nicht mehr.");
+  if (data.assignmentsLocked) throw new LayoutError("Die Nahkampfzuteilung ist bereits abgeschlossen.");
   if (data.phase !== "COMBAT" || data.round !== round) throw new LayoutError("Runde oder Phase wurde geändert. Die Entzerrung ist nur in der aktuellen Nahkampfphase möglich.");
   if (data.revision !== revision) throw new LayoutError("Positionen oder Nahkämpfe wurden inzwischen geändert. Bitte aktualisiere die Ansicht und berechne eine neue Vorschau.");
   const issue = combatEvaluationIssue(data);
@@ -56,6 +57,8 @@ export async function confirmCombatLayout(gameId: string, round: number, revisio
       const input = separationInput(current);
       if (!input || !validateSeparation(input, plan.offsets).valid) throw new LayoutError("Die Anordnung ist nicht mehr gültig. Es wurden keine Positionen geändert.");
       await storeCombatPositions(tx, current, plan.positions);
+      await tx.round.update({ where: { gameId_number: { gameId, number: round } },
+        data: { combatAssignmentsLocked: true } });
     }, { timeout: 15000 });
     revalidatePath(`/games/${gameId}/board`, "layout");
     revalidatePath(`/games/${gameId}`);

@@ -21,6 +21,8 @@ export async function readCombatData(tx: Prisma.TransactionClient, gameId: strin
     },
   });
   if (!game) return null;
+  const round = await tx.round.findUnique({ where: { gameId_number: { gameId, number: game.currentRound } },
+    select: { combatAssignmentsLocked: true } });
   // Movement can create a melee before the COMBAT phase begins.
   const melees = await tx.meleeAction.findMany({
     where: { action: { type: "MELEE", phase: { round: { gameId, number: game.currentRound } } } },
@@ -31,6 +33,7 @@ export async function readCombatData(tx: Prisma.TransactionClient, gameId: strin
     },
   });
   const data = {
+    assignmentsLocked: round?.combatAssignmentsLocked ?? false,
     gameId, round: game.currentRound, phase: game.currentPhase,
     lengthCm: game.board.lengthCm, widthCm: game.board.widthCm,
     participants: game.participants.map((participant) => ({ id: participant.id, name: participant.user.name })),

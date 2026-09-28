@@ -23,6 +23,7 @@ export type CombatEntry = {
 };
 
 export type CombatData = {
+  assignmentsLocked: boolean;
   gameId: string;
   round: number;
   phase: PhaseType;
@@ -66,6 +67,7 @@ export function combatAssignmentKey(data: CombatData) {
 
 export type CombatCommand =
   | { type: "create" }
+  | { type: "create-assigned"; figureId: string; fromCombatId: string | null }
   | { type: "delete" | "reset"; combatId: string }
   | { type: "assign"; figureId: string; fromCombatId: string | null; toCombatId: string | null }
   | { type: "split"; combatId: string; figureIds: string[] }

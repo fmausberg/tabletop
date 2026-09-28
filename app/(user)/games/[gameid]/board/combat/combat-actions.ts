@@ -18,6 +18,9 @@ function validateCommand(command: CombatCommand) {
   const id = (value: unknown) => typeof value === "string" && value.length > 0;
   switch (command.type) {
     case "create": return;
+    case "create-assigned":
+      requireCondition(id(command.figureId) && (command.fromCombatId === null || id(command.fromCombatId)), "Ungültige Figurenzuordnung.");
+      return;
     case "assign":
       requireCondition(id(command.figureId) && (command.fromCombatId === null || id(command.fromCombatId))
         && (command.toCombatId === null || id(command.toCombatId))
@@ -120,6 +123,9 @@ export async function manageCombat(gameId: string, expectedRound: number, revisi
         "Nahkämpfe können nur in der aktuellen Nahkampfphase verwaltet werden. Bitte lade die Seite neu.");
       requireCondition(data.revision === revision, "Der Spielstand wurde inzwischen geändert. Bitte lade die Ansicht neu.");
       validateAssignments(data);
+      const resultCommand = command.type === "resolve" || command.type === "correct" || command.type === "reset";
+      requireCondition(resultCommand ? data.assignmentsLocked : !data.assignmentsLocked,
+        resultCommand ? "Bestätige zuerst die Nahkampfzuteilung." : "Die Nahkampfzuteilung ist abgeschlossen und kann nicht mehr geändert werden.");
 
       switch (command.type) {
         case "create":
@@ -132,16 +138,17 @@ export async function manageCombat(gameId: string, expectedRound: number, revisi
           await tx.gameAction.delete({ where: { id: combat.actionId } });
           break;
         }
-        case "assign": {
+        case "create-assigned": case "assign": {
           const figure = data.figures.find((entry) => entry.id === command.figureId);
           requireCondition(figure && figure.participantGameId === gameId, "Diese Figur gehört nicht zum Spiel.");
           const source = command.fromCombatId ? getCombat(data, command.fromCombatId, true) : null;
-          const target = command.toCombatId ? getCombat(data, command.toCombatId, true) : null;
+          const target = command.type === "assign" && command.toCombatId ? getCombat(data, command.toCombatId, true) : null;
           const owner = data.combats.find((entry) => entry.figureIds.includes(figure.id));
           requireCondition((owner?.id ?? null) === (source?.id ?? null), "Die Figurenzuordnung wurde inzwischen geändert.");
-          requireCondition(!target || !figure.removed, "Eine entfernte Figur kann keinem Nahkampf zugeordnet werden.");
+          requireCondition((!target && command.type !== "create-assigned") || !figure.removed, "Eine entfernte Figur kann keinem Nahkampf zugeordnet werden.");
+          const destination = command.type === "create-assigned" ? await createCombat(tx, data) : target;
           if (source) await tx.meleeCombatant.delete({ where: { meleeId_figureId: { meleeId: source.id, figureId: figure.id } } });
-          if (target) await tx.meleeCombatant.create({ data: { meleeId: target.id, figureId: figure.id } });
+          if (destination) await tx.meleeCombatant.create({ data: { meleeId: destination.id, figureId: figure.id } });
           break;
         }
         case "split": {

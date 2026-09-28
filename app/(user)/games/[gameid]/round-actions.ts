@@ -85,6 +85,8 @@ export async function changePhase(gameId: string, expectedRound: number, phase: 
       if (!game) return { error: "Das Spiel existiert nicht mehr." };
       if (game.currentRound !== expectedRound) return { error: "Die Runde wurde inzwischen geändert. Bitte wähle die Phase erneut." };
       if (game.currentPhase !== expectedPhase) return { error: "Die Phase wurde inzwischen geändert. Bitte lade die Ansicht neu." };
+      const round = await tx.round.findUnique({ where: { gameId_number: { gameId, number: expectedRound } }, select: { combatAssignmentsLocked: true } });
+      if (round?.combatAssignmentsLocked && phase !== "COMBAT") return { error: "Die Nahkampfzuteilung ist abgeschlossen. Werte die Nahkämpfe aus und starte anschließend die nächste Runde." };
       if (!phasesForRound(game.currentRound).includes(phase)) return { error: "Diese Phase ist in der aktuellen Runde nicht erlaubt." };
       await ensurePhase(tx, gameId, game.currentRound, phase);
       await tx.game.update({ where: { id: gameId }, data: { currentPhase: phase } });

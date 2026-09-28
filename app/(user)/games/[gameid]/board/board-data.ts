@@ -6,9 +6,10 @@ import { phaseOrder } from "../game-phases";
 import { readCombatData } from "./combat/combat-data";
 import { boardPhasePath } from "./board-routes";
 import type { BoardData } from "./board-model";
+import { participantColor } from "./participant-color";
 
 export async function loadBoardData(gameid: string, expectedPhase?: PhaseType) {
-  const { game, combatData } = await prisma.$transaction(async (tx) => {
+  const { game, combatData, initiativeWinnerName } = await prisma.$transaction(async (tx) => {
     const game = await tx.game.findUnique({
       where: { id: gameid },
       include: {
@@ -31,7 +32,11 @@ export async function loadBoardData(gameid: string, expectedPhase?: PhaseType) {
       },
     });
     const combatData = expectedPhase === "COMBAT" && game?.currentPhase === "COMBAT" ? await readCombatData(tx, gameid) : null;
-    return { game, combatData };
+    const round = game ? await tx.round.findUnique({
+      where: { gameId_number: { gameId: gameid, number: game.currentRound } },
+      select: { initiativeWinner: { select: { user: { select: { name: true } } } } },
+    }) : null;
+    return { game, combatData, initiativeWinnerName: round?.initiativeWinner?.user.name ?? null };
   }, { isolationLevel: "RepeatableRead" });
   if (!game) notFound();
   if (expectedPhase && game.currentPhase !== expectedPhase) redirect(boardPhasePath(gameid, game.currentPhase));
@@ -44,7 +49,7 @@ export async function loadBoardData(gameid: string, expectedPhase?: PhaseType) {
     widthCm: game.board.widthCm,
     participants: game.participants.map((participant, index) => ({
       id: participant.id, name: participant.user.name,
-      color: `hsl(${(index * 137.508 + 210) % 360} 65% 48%)`,
+      color: participantColor(index),
     })),
     figures: game.figures.map((figure) => {
       const latest = figure.movementSteps.sort((a, b) => b.phase.round.number - a.phase.round.number
@@ -69,5 +74,5 @@ export async function loadBoardData(gameid: string, expectedPhase?: PhaseType) {
     }),
   };
 
-  return { game, data, combatData };
+  return { game, data, combatData, initiativeWinnerName };
 }

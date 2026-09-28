@@ -6,6 +6,7 @@ import type { BoardData } from "./board-model";
 type DiceRoll = {
   id: string;
   playerName: string;
+  playerColor: string;
   diceCount: number;
   results: number[];
 };
@@ -17,16 +18,16 @@ function rollD6(count: number) {
 }
 
 export function DicePanel({ participants }: { participants: BoardData["participants"] }) {
-  const [participantId, setParticipantId] = useState(participants[0]?.id ?? "");
   const [rolls, setRolls] = useState<DiceRoll[]>([]);
 
-  function roll(diceCount: number) {
+  function roll(participantId: string, diceCount: number) {
     const participant = participants.find((entry) => entry.id === participantId);
     if (!participant) return;
 
     setRolls((current) => [{
       id: crypto.randomUUID(),
       playerName: participant.name,
+      playerColor: participant.color,
       diceCount,
       results: rollD6(diceCount),
     }, ...current]);
@@ -35,52 +36,34 @@ export function DicePanel({ participants }: { participants: BoardData["participa
   return (
     <aside className="min-w-0 rounded-lg border border-zinc-300 p-3 dark:border-zinc-700" aria-labelledby="dice-heading">
       <h2 id="dice-heading" className="font-semibold">Würfel</h2>
-      <label className="mt-3 block text-sm">
-        Spieler
-        <select
-          className="mt-1.5 w-full rounded-md border border-zinc-300 bg-transparent p-2 dark:border-zinc-700"
-          value={participantId}
-          onChange={(event) => setParticipantId(event.target.value)}
-          disabled={!participants.length}
-        >
-          {!participants.length && <option value="">Keine Teilnehmer</option>}
-          {participants.map((participant) => (
-            <option key={participant.id} value={participant.id} className="bg-white text-zinc-900">
-              {participant.name}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <div className="mt-3 grid grid-cols-5 gap-1.5" aria-label="Anzahl der W6 auswählen">
-        {Array.from({ length: 10 }, (_, index) => index + 1).map((count) => (
-          <button
-            key={count}
-            type="button"
-            className="min-h-10 rounded-md border border-zinc-300 font-semibold hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
-            onClick={() => roll(count)}
-            disabled={!participantId}
-            aria-label={`${count} W6 werfen`}
-          >
-            {count}
-          </button>
-        ))}
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        {participants.map((participant) => <section key={participant.id} className="min-w-0" aria-label={`Würfel für ${participant.name}`}>
+          <h3 className="mb-2 break-words border-b-2 pb-1 text-sm font-medium" style={{ borderColor: participant.color }}>{participant.name}</h3>
+          <div className="grid grid-cols-3 gap-1">
+            {Array.from({ length: 10 }, (_, index) => index + 1).map((count) => <button
+              key={count}
+              type="button"
+              className={`min-h-8 rounded-md border border-zinc-300 text-sm font-semibold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800 ${count === 10 ? "col-start-2" : ""}`}
+              onClick={() => roll(participant.id, count)}
+              aria-label={`${count} W6 für ${participant.name} werfen`}
+            >{count}</button>)}
+          </div>
+        </section>)}
       </div>
+      {!participants.length && <p className="mt-3 text-sm text-zinc-500">Keine Teilnehmer.</p>}
 
       <div className="mt-4 overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead className="border-b border-zinc-300 text-zinc-500 dark:border-zinc-700">
             <tr>
-              <th className="pb-2 pr-2 font-medium">Spieler</th>
               <th className="pb-2 pr-2 text-center font-medium">W6</th>
               <th className="pb-2 font-medium">Ergebnisse</th>
             </tr>
           </thead>
           <tbody>
             {rolls.map((entry) => (
-              <tr key={entry.id} className="border-b border-zinc-200 align-top last:border-0 dark:border-zinc-800">
-                <td className="py-2 pr-2 font-medium">{entry.playerName}</td>
-                <td className="py-2 pr-2 text-center tabular-nums">{entry.diceCount}</td>
+              <tr key={entry.id} style={{ color: entry.playerColor }} title={entry.playerName} className="border-b border-zinc-200 align-top last:border-0 dark:border-zinc-800">
+                <td className="py-2 pr-2 text-center tabular-nums"><span className="sr-only">{entry.playerName}: </span>{entry.diceCount}</td>
                 <td className="py-2 font-semibold tabular-nums">{entry.results.join(" · ")}</td>
               </tr>
             ))}

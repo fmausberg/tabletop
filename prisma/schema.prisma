@@ -166,6 +166,7 @@ model Round {
   gameId String
   game   Game   @relation(fields: [gameId], references: [id])
   number Int
+  combatAssignmentsLocked Boolean @default(false)
 
   initiativeWinnerId String?
   initiativeWinner   GameParticipant? @relation("InitiativeWinner", fields: [initiativeWinnerId], references: [id])
