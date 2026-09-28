@@ -12,9 +12,9 @@ function segmentDistance(point: Point, from: Point, to: Point) {
   return Math.hypot(point.x - from.x - t * dx, point.y - from.y - t * dy);
 }
 
-/** Retreats are measured in cm. Prefer 2 cm directly away from the winning side;
- * detours can add lateral travel, but never reduce the 2 cm outward component.
- * Dead figures are absent from obstacles. Unmoved survivors remain fixed.
+/** Search for up to 2 cm of retreat, maximizing the nearest enemy edge distance.
+ * Friendly blockers move together; enemy bases and board edges are hard limits.
+ * Control zones are a preference, so lack of space never blocks the next round.
  */
 export function calculateCombatRetreats(data: CombatData): { positions: Record<string, Point>; error: null } | { error: string; positions?: never } {
   const alive = data.figures.filter((figure): figure is Placed => !figure.removed && figure.wounds > 0 && figure.position !== null);
@@ -47,62 +47,110 @@ export function calculateCombatRetreats(data: CombatData): { positions: Record<s
   }
 
   const positions = new Map(alive.map((figure) => [figure.id, figure.position]));
-  let geometryBudget = 1_000_000;
-  const inside = (point: Point, radius: number) => point.x >= radius && point.y >= radius
-    && point.x <= data.lengthCm - radius && point.y <= data.widthCm - radius;
-  function clearPath(retreat: Retreat, path: Point[]) {
-    const radius = retreat.figure.baseDiameterCm / 2;
-    if (path.some((point) => !inside(point, radius))) return false;
-    for (const other of alive) {
-      if (--geometryBudget < 0) return false;
-      if (other.id === retreat.figure.id) continue;
-      const obstacle = positions.get(other.id)!;
-      const clearance = radius + other.baseDiameterCm / 2 + (other.participantId === retreat.figure.participantId ? 0 : 2);
-      const end = path[path.length - 1];
-      if (Math.hypot(end.x - obstacle.x, end.y - obstacle.y) < clearance - 1e-9) return false;
-      for (let i = 1; i < path.length; i++) {
-        const startDistance = Math.hypot(path[i - 1].x - obstacle.x, path[i - 1].y - obstacle.y);
-        // Starting inside an enemy control zone is expected after melee. Only exit it;
-        // never approach its centre or enter any other zone along the path.
-        if (segmentDistance(obstacle, path[i - 1], path[i]) < Math.min(clearance, startDistance) - 1e-9) return false;
+  const epsilon = 1e-7;
+  const inside = (point: Point, radius: number) => point.x >= radius - epsilon && point.y >= radius - epsilon
+    && point.x <= data.lengthCm - radius + epsilon && point.y <= data.widthCm - radius + epsilon;
+  const shifted = (point: Point, delta: Point) => ({ x: point.x + delta.x, y: point.y + delta.y });
+  const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
+
+  function enemyGap(figure: Placed, point: Point) {
+    let gap = Infinity;
+    for (const enemy of alive) {
+      if (enemy.participantId !== figure.participantId) {
+        gap = Math.min(gap, distance(point, positions.get(enemy.id)!) - (figure.baseDiameterCm + enemy.baseDiameterCm) / 2);
       }
     }
-    return true;
+    // Beyond the control zone there is no additional reason to evade sideways.
+    return Math.min(2, gap);
   }
 
-  function candidates(retreat: Retreat) {
-    const { position: start } = retreat.figure;
-    const tangent = { x: -retreat.away.y, y: retreat.away.x };
-    const options: { target: Point; cost: number }[] = [];
-    const lateral = [0, ...Array.from({ length: 24 }, (_, i) => [(i + 1) * 0.25, -(i + 1) * 0.25]).flat()];
-    const outward = 2;
-    for (const side of lateral) {
-      if (geometryBudget < 0) break;
-      const target = { x: start.x + retreat.away.x * outward + tangent.x * side, y: start.y + retreat.away.y * outward + tangent.y * side };
-      const waypoint = { x: start.x + tangent.x * side, y: start.y + tangent.y * side };
-      if (clearPath(retreat, [start, target])) options.push({ target, cost: Math.hypot(outward, side) });
-      else if (side && clearPath(retreat, [start, waypoint, target])) options.push({ target, cost: Math.abs(side) + outward });
-    }
-    return options.sort((a, b) => a.cost - b.cost).slice(0, 16);
-  }
-
-  // Try alternate orders/positions: moving one loser must not trap another.
-  let remainingWork = 600;
-  function place(pending: Retreat[]): boolean {
-    if (!pending.length) return true;
-    if (--remainingWork < 0 || geometryBudget < 0) return false;
-    const choices = pending.map((retreat) => ({ retreat, options: candidates(retreat) }))
-      .filter((entry) => entry.options.length).sort((a, b) => a.options.length - b.options.length);
-    for (const { retreat, options } of choices.slice(0, 3)) {
-      for (const { target } of options) {
-        positions.set(retreat.figure.id, target);
-        if (place(pending.filter((entry) => entry !== retreat))) return true;
-        positions.set(retreat.figure.id, retreat.figure.position);
-        if (remainingWork < 0) return false;
+  function movingGroup(retreat: Retreat, delta: Point): Placed[] | null {
+    const group = new Set<Placed>([retreat.figure]);
+    const ids = new Set([retreat.figure.id]);
+    // Set iteration also visits newly added friends, including chains of blockers.
+    // All members translate simultaneously and retain their relative positions.
+    for (const figure of group) {
+      const start = positions.get(figure.id)!;
+      const end = shifted(start, delta);
+      if (!inside(end, figure.baseDiameterCm / 2)
+        || distance(end, figure.position) > 2 + epsilon) return null;
+      for (const other of alive) {
+        if (ids.has(other.id)) continue;
+        const obstacle = positions.get(other.id)!;
+        const bases = (figure.baseDiameterCm + other.baseDiameterCm) / 2;
+        const pathDistance = segmentDistance(obstacle, start, end);
+        if (other.participantId === figure.participantId) {
+          if (pathDistance < bases - epsilon) {
+            ids.add(other.id);
+            group.add(other);
+          }
+        } else {
+          if (pathDistance < bases - epsilon) return null;
+          // Do not newly enter a control zone or move deeper into an occupied one.
+          const clearance = Math.min(bases + 2, distance(start, obstacle));
+          if (pathDistance < clearance - epsilon) return null;
+        }
       }
     }
-    return false;
+    return [...group];
   }
-  if (!place(retreats)) return { error: "Für mindestens einen Verlierer wurde kein sicherer Rückzug gefunden. Bitte schaffe Platz an Figuren, Kontrollzonen oder dem Spielfeldrand. Die Runde wurde nicht gewechselt." };
-  return { error: null, positions: Object.fromEntries(retreats.map(({ figure }) => [figure.id, positions.get(figure.id)!])) };
+
+  // Revisit losers after their neighbours move. Total displacement of every
+  // figure (including accompanying friends) stays within 2 cm of its origin.
+  for (let pass = 0; pass < 3; pass++) {
+    let changed = false;
+    for (const retreat of retreats) {
+      const start = positions.get(retreat.figure.id)!;
+      const progress = (point: Point) => (point.x - retreat.figure.position.x) * retreat.away.x
+        + (point.y - retreat.figure.position.y) * retreat.away.y;
+      let best = { gap: enemyGap(retreat.figure, start), progress: progress(start), cost: 0,
+        delta: { x: 0, y: 0 }, group: [] as Placed[] };
+      function consider(angle: number) {
+        const direction = {
+          x: retreat.away.x * Math.cos(angle) - retreat.away.y * Math.sin(angle),
+          y: retreat.away.x * Math.sin(angle) + retreat.away.y * Math.cos(angle),
+        };
+        let low = 0;
+        let high = 2;
+        let group: Placed[] = [];
+        // Find the feasible prefix, including sub-centimetre space at the edge.
+        for (let iteration = 0; iteration < 18; iteration++) {
+          const length = iteration === 0 ? high : (low + high) / 2;
+          const candidate = movingGroup(retreat, { x: direction.x * length, y: direction.y * length });
+          if (candidate) {
+            low = length;
+            group = candidate;
+            if (length === 2) break;
+          } else high = length;
+        }
+        if (low < 0.001) return;
+        const delta = { x: direction.x * low, y: direction.y * low };
+        const target = shifted(start, delta);
+        const gap = enemyGap(retreat.figure, target);
+        const outward = progress(target);
+        const cost = group.length * low;
+        if (gap > best.gap + epsilon
+          || (Math.abs(gap - best.gap) <= epsilon && outward > best.progress + epsilon)
+          || (Math.abs(gap - best.gap) <= epsilon && Math.abs(outward - best.progress) <= epsilon && cost < best.cost)) {
+          best = { gap, progress: outward, cost, delta, group };
+        }
+      }
+      // Sweep the outward half-circle, then refine around the best direction.
+      for (let step = -18; step <= 18; step++) consider(step * Math.PI / 36);
+      if (best.group.length) {
+        const angle = Math.atan2(best.delta.y, best.delta.x) - Math.atan2(retreat.away.y, retreat.away.x);
+        const normalized = Math.atan2(Math.sin(angle), Math.cos(angle));
+        for (let step = -4; step <= 4; step++) {
+          consider(Math.max(-Math.PI / 2, Math.min(Math.PI / 2, normalized + step * Math.PI / 180)));
+        }
+        for (const figure of best.group) positions.set(figure.id, shifted(positions.get(figure.id)!, best.delta));
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+  // Include accompanying friends so the existing transaction stores every move.
+  return { error: null, positions: Object.fromEntries(alive
+    .filter((figure) => distance(figure.position, positions.get(figure.id)!) > epsilon)
+    .map((figure) => [figure.id, positions.get(figure.id)!])) };
 }
