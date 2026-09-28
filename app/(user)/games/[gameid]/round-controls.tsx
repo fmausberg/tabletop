@@ -3,13 +3,15 @@
 import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { PhaseType } from "@/generated/prisma/enums";
-import { nextPhaseInRound, phaseLabels, phasesForRound } from "./game-phases";
-import { advanceRound, changePhase } from "./round-actions";
+import { nextPhaseInRound, phaseLabels } from "./game-phases";
+import { advanceRound } from "./round-actions";
+import { updateCurrentPhase } from "./phase-actions";
 import { MovementControls, type RunRoundAction } from "./board/movement/movement-controls";
 
-type Props = { gameId: string; round: number; phase: PhaseType; initiativeWinnerName: string | null; children?: ReactNode; readOnly?: boolean; phaseLocked?: boolean };
+type Props = { gameId: string; round: number; phase: PhaseType; initiativeWinnerName: string | null; children?: ReactNode; readOnly?: boolean;
+  phaseControls?: { canGoBack: boolean; backReason: string | null; canReset: boolean; legacyCombat: boolean } | null };
 
-export function RoundControls({ gameId, round, phase, initiativeWinnerName, children, readOnly = false, phaseLocked = false }: Props) {
+export function RoundControls({ gameId, round, phase, initiativeWinnerName, children, readOnly = false, phaseControls }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -59,22 +61,37 @@ export function RoundControls({ gameId, round, phase, initiativeWinnerName, chil
         <span aria-hidden="true" className="text-zinc-400">|</span>
         <span>Initiative: <span className="font-semibold">{initiativeWinnerName ?? "Noch nicht ausgewürfelt"}</span></span>
         <span aria-hidden="true" className="text-zinc-400">|</span>
-        <label className="flex items-center gap-1 whitespace-nowrap">Phase:
-          {readOnly || phaseLocked ? <span>{phaseLabels[phase]}</span> : <select className="rounded border border-zinc-300 bg-transparent px-2 py-1 text-sm disabled:opacity-50 dark:border-zinc-700" value={phase} disabled={pending} onChange={(event) => {
-            const selected = event.target.value as PhaseType;
-            run(async () => {
-              const result = await changePhase(gameId, round, selected, phase);
-              if (!result.error) router.push(`/games/${gameId}/board`);
-              return result;
-            }, "Phase gespeichert.");
-          }}>
-            {phasesForRound(round).map((value) => <option className="bg-white text-zinc-900" key={value} value={value}>{phaseLabels[value]}</option>)}
-          </select>}
-        </label>
+        <span className="whitespace-nowrap">Phase: <span className="font-semibold">{phaseLabels[phase]}</span></span>
         {!readOnly && <>
           <span aria-hidden="true" className="text-zinc-400">|</span>
           <button type="button" disabled={pending} className="rounded-md border border-zinc-300 px-2 py-1 text-sm hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800" onClick={advance}>{phase === "INITIATIVE" ? "Initiative auswürfeln" : nextPhase ? "Nächste Phase" : "Nächste Runde"}</button>
         </>}
+        {!readOnly && phaseControls && <details className="relative">
+          <summary className="cursor-pointer text-xs text-zinc-500">Phasenaktionen</summary>
+          <div className="absolute right-0 top-full z-20 mt-2 w-72 space-y-2 rounded-lg border border-zinc-300 bg-white p-3 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+            <button type="button" disabled={pending || !phaseControls.canReset}
+              className="w-full rounded-md border border-red-300 px-3 py-2 text-sm text-red-700 disabled:opacity-50 dark:text-red-400"
+              onClick={() => {
+                const message = phaseControls.legacyCombat
+                  ? "Für diese ältere Nahkampfphase fehlt der Anfangsstand. Alle Nahkampfzuordnungen und Auswertungen dieser Runde sowie Verschiebungen der Nahkampfphase zurücksetzen? Lebenspunkte werden wiederhergestellt."
+                  : "Alle Änderungen der aktuellen Phase zurücksetzen und ihren Anfangsstand wiederherstellen?";
+                if (!window.confirm(message)) return;
+                run(async () => {
+                  const result = await updateCurrentPhase(gameId, round, phase, "reset");
+                  if (!result.error) { router.push(`/games/${gameId}/board`); router.refresh(); }
+                  return result;
+                }, "Phase zurückgesetzt.");
+              }}>Phase zurücksetzen</button>
+            <button type="button" disabled={pending || !phaseControls.canGoBack}
+              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm disabled:opacity-50"
+              onClick={() => run(async () => {
+                const result = await updateCurrentPhase(gameId, round, phase, "back");
+                if (!result.error) { router.push(`/games/${gameId}/board`); router.refresh(); }
+                return result;
+              }, "Vorherige Phase geöffnet.")}>Vorherige Phase</button>
+            {phaseControls.backReason && <p className="text-xs text-zinc-500">{phaseControls.backReason}</p>}
+          </div>
+        </details>}
         {!readOnly && phase === "MOVEMENT" && <details className="relative ml-auto">
           <summary className="cursor-pointer text-xs text-zinc-500">Bewegungsaktionen</summary>
           <div className="absolute right-0 top-full z-10 mt-2 w-72 rounded-lg border border-zinc-300 bg-white p-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">

@@ -186,6 +186,8 @@ model RoundPhase {
   roundId String
   round   Round     @relation(fields: [roundId], references: [id])
   type    PhaseType
+  resetState Json?
+  previousState Json?
 
   turns         PhaseTurn[]
   movementSteps MovementStep[]

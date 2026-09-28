@@ -4,7 +4,8 @@ import { randomInt } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import type { PhaseType, Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { nextPhaseInRound, phasesForRound } from "./game-phases";
+import { nextPhaseInRound } from "./game-phases";
+import { capturePhaseState, savePhaseEntry } from "./phase-history";
 import { CombatRoundEndError, finishCombatRound } from "./board/combat/combat-round-end";
 
 async function ensurePhase(tx: Prisma.TransactionClient, gameId: string, number: number, type: PhaseType) {
@@ -33,6 +34,7 @@ export async function advanceRound(gameId: string, expectedRound: number, expect
       if (game.currentRound !== expectedRound) return { error: "Die Runde wurde bereits geändert. Bitte lade die Seite neu." };
       if (game.currentPhase !== expectedPhase) return { error: "Die Phase wurde bereits geändert. Bitte lade die Seite neu." };
       await ensurePhase(tx, gameId, game.currentRound, game.currentPhase);
+      const previousState = await capturePhaseState(tx, gameId, game.currentRound);
 
       let initiativeWinnerName: string | null = null;
       if (game.currentPhase === "INITIATIVE") {
@@ -51,6 +53,7 @@ export async function advanceRound(gameId: string, expectedRound: number, expect
         initiativeWinnerName = winner.user.name;
 
         await ensurePhase(tx, gameId, game.currentRound, "MOVEMENT");
+        await savePhaseEntry(tx, gameId, game.currentRound, "MOVEMENT", previousState);
         await tx.game.update({ where: { id: gameId }, data: { currentPhase: "MOVEMENT" } });
         return { error: null, initiativeWinnerName };
       }
@@ -58,6 +61,7 @@ export async function advanceRound(gameId: string, expectedRound: number, expect
       const nextPhase = nextPhaseInRound(game.currentRound, game.currentPhase);
       if (nextPhase) {
         await ensurePhase(tx, gameId, game.currentRound, nextPhase);
+        await savePhaseEntry(tx, gameId, game.currentRound, nextPhase, previousState);
         await tx.game.update({ where: { id: gameId }, data: { currentPhase: nextPhase } });
         return { error: null, initiativeWinnerName };
       }
@@ -67,6 +71,7 @@ export async function advanceRound(gameId: string, expectedRound: number, expect
         ? await finishCombatRound(tx, gameId, game.currentRound) : null;
       const nextRound = game.currentRound + 1;
       await ensurePhase(tx, gameId, nextRound, "INITIATIVE");
+      await savePhaseEntry(tx, gameId, nextRound, "INITIATIVE", previousState);
       await tx.game.update({ where: { id: gameId }, data: { currentRound: nextRound, currentPhase: "INITIATIVE" } });
       return { error: null, initiativeWinnerName, combatSummary };
     }, { timeout: 15000 });
@@ -75,28 +80,5 @@ export async function advanceRound(gameId: string, expectedRound: number, expect
   } catch (error) {
     if (error instanceof CombatRoundEndError) return { error: error.message };
     return { error: "Die Runde konnte nicht geändert werden. Bitte versuche es erneut." };
-  }
-}
-
-export async function changePhase(gameId: string, expectedRound: number, phase: PhaseType, expectedPhase: PhaseType) {
-  try {
-    const result = await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM "Game" WHERE id = ${gameId} FOR UPDATE`;
-      const game = await tx.game.findUnique({ where: { id: gameId } });
-      if (!game) return { error: "Das Spiel existiert nicht mehr." };
-      if (!game.setupCompleted) return { error: "Bitte bestätige zuerst die Armeen in der Spielvorbereitung." };
-      if (game.currentRound !== expectedRound) return { error: "Die Runde wurde inzwischen geändert. Bitte wähle die Phase erneut." };
-      if (game.currentPhase !== expectedPhase) return { error: "Die Phase wurde inzwischen geändert. Bitte lade die Ansicht neu." };
-      const round = await tx.round.findUnique({ where: { gameId_number: { gameId, number: expectedRound } }, select: { combatAssignmentsLocked: true } });
-      if (round?.combatAssignmentsLocked && phase !== "COMBAT") return { error: "Die Nahkampfzuteilung ist abgeschlossen. Werte die Nahkämpfe aus und starte anschließend die nächste Runde." };
-      if (!phasesForRound(game.currentRound).includes(phase)) return { error: "Diese Phase ist in der aktuellen Runde nicht erlaubt." };
-      await ensurePhase(tx, gameId, game.currentRound, phase);
-      await tx.game.update({ where: { id: gameId }, data: { currentPhase: phase } });
-      return { error: null };
-    });
-    refreshProgress(gameId);
-    return result;
-  } catch {
-    return { error: "Die Phase konnte nicht geändert werden. Bitte versuche es erneut." };
   }
 }

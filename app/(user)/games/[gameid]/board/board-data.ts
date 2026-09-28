@@ -7,9 +7,10 @@ import { readCombatData } from "./combat/combat-data";
 import { boardPhasePath } from "./board-routes";
 import type { BoardData } from "./board-model";
 import { participantColor } from "./participant-color";
+import { phaseHistory } from "../phase-history";
 
 export async function loadBoardData(gameid: string, expectedPhase?: PhaseType) {
-  const { game, combatData, initiativeWinnerName } = await prisma.$transaction(async (tx) => {
+  const { game, combatData, initiativeWinnerName, phaseControls } = await prisma.$transaction(async (tx) => {
     const game = await tx.game.findUnique({
       where: { id: gameid },
       include: {
@@ -36,7 +37,13 @@ export async function loadBoardData(gameid: string, expectedPhase?: PhaseType) {
       where: { gameId_number: { gameId: gameid, number: game.currentRound } },
       select: { initiativeWinner: { select: { user: { select: { name: true } } } } },
     }) : null;
-    return { game, combatData, initiativeWinnerName: round?.initiativeWinner?.user.name ?? null };
+    const history = game?.setupCompleted && expectedPhase === game.currentPhase
+      ? await phaseHistory(tx, gameid, game.currentRound, game.currentPhase) : null;
+    const phaseControls = history ? {
+      canGoBack: history.canGoBack, backReason: history.backReason,
+      canReset: history.changed, legacyCombat: history.legacyCombat,
+    } : null;
+    return { game, combatData, initiativeWinnerName: round?.initiativeWinner?.user.name ?? null, phaseControls };
   }, { isolationLevel: "RepeatableRead" });
   if (!game) notFound();
   if (expectedPhase && !game.setupCompleted) redirect(`/games/${gameid}`);
@@ -75,5 +82,5 @@ export async function loadBoardData(gameid: string, expectedPhase?: PhaseType) {
     }),
   };
 
-  return { game, data, combatData, initiativeWinnerName };
+  return { game, data, combatData, initiativeWinnerName, phaseControls };
 }

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { savePhaseEntry } from "./phase-history";
 
 export async function confirmArmySetup(gameId: string, form: FormData) {
   try {
@@ -57,6 +58,7 @@ export async function confirmArmySetup(gameId: string, form: FormData) {
       await tx.figure.createMany({ data: figures });
       await tx.round.upsert({ where: { gameId_number: { gameId, number: 0 } },
         create: { gameId, number: 0, phases: { create: { type: "PLACEMENT" } } }, update: {} });
+      await savePhaseEntry(tx, gameId, 0, "PLACEMENT");
       await tx.game.update({ where: { id: gameId }, data: { setupCompleted: true, currentRound: 0, currentPhase: "PLACEMENT" } });
       return { error: null };
     }, { isolationLevel: "Serializable", timeout: 15000 });

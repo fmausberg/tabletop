@@ -7,7 +7,7 @@ export default async function Page({ params }: { params: Promise<{ gameid: strin
   const snapshot = await loadBoardData(gameid, "PLACEMENT");
   return (
     <BoardScreen snapshot={snapshot}>
-      <BoardViewer data={snapshot.data} interaction="PLACEMENT" />
+      <BoardViewer data={snapshot.data} interaction="PLACEMENT" showDice={false} />
     </BoardScreen>
   );
 }
