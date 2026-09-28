@@ -1,7 +1,5 @@
 import type { Figure } from "@/generated/prisma/client";
 import type { GameDetails } from "./game-details-data";
-import { FiguresForm } from "./figures-form";
-import { FiguresDeleteButton } from "./figures-delete-button";
 import { tableWrapper, table, rowBorder } from "./table-styles";
 
 const figureColumns = [
@@ -16,11 +14,10 @@ const figureColumns = [
   ["speedCm", "speed (cm)", null],
 ] as const satisfies readonly (readonly [keyof Figure, string, keyof Figure | null])[];
 
-export function FiguresSection({ game, characters, players }: GameDetails) {
+export function FiguresSection({ game }: GameDetails) {
   return (
     <section aria-labelledby="figures-title">
       <h2 id="figures-title" className="mb-4 text-xl font-semibold">Figuren <span className="text-sm font-normal text-zinc-500">({game.figures.length})</span></h2>
-      <FiguresForm gameId={game.id} characters={characters} players={players} />
       <div className={tableWrapper}>
         <table className={table}>
           <caption className="sr-only">Spieler, Figuren und ihre numerischen Attribute</caption>
@@ -28,7 +25,7 @@ export function FiguresSection({ game, characters, players }: GameDetails) {
             <th scope="col" className="p-3">Spieler</th>
             <th scope="col" className="p-3">Figur</th>
             {figureColumns.map(([key, label]) => <th scope="col" key={key} className="p-3">{label}</th>)}
-            <th scope="col" className="p-3">Aktionen</th>
+            <th scope="col" className="p-3">Zug</th>
           </tr></thead>
           <tbody>
             {game.figures.map((figure) => <tr key={figure.id} className={rowBorder}>
@@ -40,7 +37,7 @@ export function FiguresSection({ game, characters, players }: GameDetails) {
                   <span className="ml-1 text-zinc-500 dark:text-zinc-400" title="Ursprünglicher Wert">({figure[initialKey] ?? "—"})</span>
                 )}
               </td>)}
-              <td className="p-3"><FiguresDeleteButton gameId={game.id} figureId={figure.id} name={`${figure.character.name}${figure.number === null ? "" : ` ${figure.number}`}`} /></td>
+              <td className="p-3">{figure.platoon ?? "—"}</td>
             </tr>)}
             {!game.figures.length && <tr><td colSpan={figureColumns.length + 3} className="p-8 text-center text-zinc-500">Noch keine Figuren in diesem Spiel.</td></tr>}
           </tbody>

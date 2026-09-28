@@ -29,6 +29,7 @@ export async function advanceRound(gameId: string, expectedRound: number, expect
       await tx.$queryRaw`SELECT id FROM "Game" WHERE id = ${gameId} FOR UPDATE`;
       const game = await tx.game.findUnique({ where: { id: gameId } });
       if (!game) return { error: "Das Spiel existiert nicht mehr." };
+      if (!game.setupCompleted) return { error: "Bitte bestätige zuerst die Armeen in der Spielvorbereitung." };
       if (game.currentRound !== expectedRound) return { error: "Die Runde wurde bereits geändert. Bitte lade die Seite neu." };
       if (game.currentPhase !== expectedPhase) return { error: "Die Phase wurde bereits geändert. Bitte lade die Seite neu." };
       await ensurePhase(tx, gameId, game.currentRound, game.currentPhase);
@@ -83,6 +84,7 @@ export async function changePhase(gameId: string, expectedRound: number, phase: 
       await tx.$queryRaw`SELECT id FROM "Game" WHERE id = ${gameId} FOR UPDATE`;
       const game = await tx.game.findUnique({ where: { id: gameId } });
       if (!game) return { error: "Das Spiel existiert nicht mehr." };
+      if (!game.setupCompleted) return { error: "Bitte bestätige zuerst die Armeen in der Spielvorbereitung." };
       if (game.currentRound !== expectedRound) return { error: "Die Runde wurde inzwischen geändert. Bitte wähle die Phase erneut." };
       if (game.currentPhase !== expectedPhase) return { error: "Die Phase wurde inzwischen geändert. Bitte lade die Ansicht neu." };
       const round = await tx.round.findUnique({ where: { gameId_number: { gameId, number: expectedRound } }, select: { combatAssignmentsLocked: true } });

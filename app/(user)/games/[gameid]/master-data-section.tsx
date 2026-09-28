@@ -11,7 +11,7 @@ export function MasterDataSection({ game }: Pick<GameDetails, "game">) {
         <div><dt className="text-sm text-zinc-500">Board</dt><dd className="mt-1">{game.board.name}<span className="mt-1 block break-all font-mono text-xs text-zinc-500">{game.boardId}</span></dd></div>
         <div><dt className="text-sm text-zinc-500">Runde</dt><dd className="mt-1">{game.currentRound}</dd></div>
 
-        <div><dt className="text-sm text-zinc-500">Aktuelle Phase</dt><dd className="mt-1">{phaseLabels[game.currentPhase]} ({game.currentPhase})</dd></div>
+        <div><dt className="text-sm text-zinc-500">Aktuelle Phase</dt><dd className="mt-1">{game.setupCompleted ? `${phaseLabels[game.currentPhase]} (${game.currentPhase})` : "Spielvorbereitung · Armeen auswählen"}</dd></div>
       </dl>
     </section>
   );

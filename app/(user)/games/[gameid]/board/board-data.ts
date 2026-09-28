@@ -39,6 +39,7 @@ export async function loadBoardData(gameid: string, expectedPhase?: PhaseType) {
     return { game, combatData, initiativeWinnerName: round?.initiativeWinner?.user.name ?? null };
   }, { isolationLevel: "RepeatableRead" });
   if (!game) notFound();
+  if (expectedPhase && !game.setupCompleted) redirect(`/games/${gameid}`);
   if (expectedPhase && game.currentPhase !== expectedPhase) redirect(boardPhasePath(gameid, game.currentPhase));
 
   const data: BoardData = {

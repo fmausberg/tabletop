@@ -5,10 +5,10 @@ import { useState, useTransition } from "react";
 import { addParticipant } from "./participants-actions";
 
 type User = { id: string; name: string; email: string };
-type Props = { gameId: string; users: User[]; participants: { id: string; user: User }[] };
+type Props = { gameId: string; users: User[]; participants: { id: string; user: User; armyName?: string | null }[]; readOnly?: boolean };
 const button = "rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800";
 
-export function ParticipantsSection({ gameId, users, participants }: Props) {
+export function ParticipantsSection({ gameId, users, participants, readOnly = false }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [pending, startTransition] = useTransition();
@@ -18,7 +18,7 @@ export function ParticipantsSection({ gameId, users, participants }: Props) {
   return (
     <section aria-labelledby="participants-title">
       <h2 id="participants-title" className="mb-4 text-xl font-semibold">Teilnehmer <span className="text-sm font-normal text-zinc-500">({participants.length})</span></h2>
-      <div className="mb-4 rounded-lg border border-zinc-300 p-5 dark:border-zinc-700">
+      {!readOnly && <div className="mb-4 rounded-lg border border-zinc-300 p-5 dark:border-zinc-700">
         {error && <p role="alert" className="mb-4 rounded-md bg-red-50 p-3 text-red-800">{error}</p>}
         {availableUsers.length ? <form key={availableUsers.map((user) => user.id).join(",")} onSubmit={(event) => {
           event.preventDefault();
@@ -47,14 +47,14 @@ export function ParticipantsSection({ gameId, users, participants }: Props) {
         </form> : <p className="text-sm text-zinc-500">{users.length ? "Alle vorhandenen Benutzer nehmen bereits teil." : "Noch keine Benutzer vorhanden."}</p>}
         <Link href="/user" className="mt-3 inline-block text-sm underline underline-offset-4">Benutzer verwalten</Link>
         <p role="status" className="mt-3 text-sm text-zinc-500">{message}</p>
-      </div>
+      </div>}
       <div className="overflow-x-auto rounded-lg border border-zinc-300 dark:border-zinc-700">
         <table className="w-full text-left text-sm">
           <caption className="sr-only">Teilnehmer dieses Spiels</caption>
-          <thead className="bg-zinc-100 dark:bg-zinc-900"><tr><th scope="col" className="p-3">Name</th><th scope="col" className="p-3">E-Mail</th></tr></thead>
+          <thead className="bg-zinc-100 dark:bg-zinc-900"><tr><th scope="col" className="p-3">Name</th><th scope="col" className="p-3">E-Mail</th><th scope="col" className="p-3">Armee</th></tr></thead>
           <tbody>
-            {participants.map((participant) => <tr key={participant.id} className="border-t border-zinc-200 dark:border-zinc-800"><th scope="row" className="p-3 font-medium">{participant.user.name}</th><td className="p-3">{participant.user.email}</td></tr>)}
-            {!participants.length && <tr><td colSpan={2} className="p-8 text-center text-zinc-500">Noch keine Teilnehmer in diesem Spiel.</td></tr>}
+            {participants.map((participant) => <tr key={participant.id} className="border-t border-zinc-200 dark:border-zinc-800"><th scope="row" className="p-3 font-medium">{participant.user.name}</th><td className="p-3">{participant.user.email}</td><td className="p-3">{participant.armyName ?? "—"}</td></tr>)}
+            {!participants.length && <tr><td colSpan={3} className="p-8 text-center text-zinc-500">Noch keine Teilnehmer in diesem Spiel.</td></tr>}
           </tbody>
         </table>
       </div>

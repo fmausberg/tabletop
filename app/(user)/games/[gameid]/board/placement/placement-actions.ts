@@ -22,6 +22,7 @@ export async function movePlacedFigure(gameId: string, figureId: string, x: numb
       await tx.$queryRaw`SELECT id FROM "Game" WHERE id = ${gameId} FOR UPDATE`;
       const game = await tx.game.findUnique({ where: { id: gameId }, include: { board: true } });
       if (!game) return { error: "Das Spiel existiert nicht mehr." };
+      if (!game.setupCompleted) return { error: "Bitte bestätige zuerst die Armeen in der Spielvorbereitung." };
       if (game.currentRound !== 0 || game.currentPhase !== "PLACEMENT") return { error: "Figuren können nur in der Aufstellungsphase verschoben werden." };
       const figure = await tx.figure.findFirst({ where: { id: figureId, gameId, participant: { gameId } } });
       if (!figure || figure.removed) return { error: "Diese Figur ist in diesem Spiel nicht verfügbar." };
@@ -55,6 +56,7 @@ export async function placeFigure(gameId: string, figureId: string, x: number, y
       await tx.$queryRaw`SELECT id FROM "Game" WHERE id = ${gameId} FOR UPDATE`;
       const game = await tx.game.findUnique({ where: { id: gameId }, include: { board: true } });
       if (!game) return { error: "Das Spiel existiert nicht mehr." };
+      if (!game.setupCompleted) return { error: "Bitte bestätige zuerst die Armeen in der Spielvorbereitung." };
       if (game.currentRound !== 0 || game.currentPhase !== "PLACEMENT") return { error: "Figuren können nur in der Aufstellungsphase platziert werden." };
       const figure = await tx.figure.findFirst({
         where: { id: figureId, gameId, participant: { gameId } },

@@ -18,12 +18,14 @@ export async function getGameDetails(gameid: string) {
   });
   if (!game) notFound();
 
-  const [characters, players] = await Promise.all([
+  const [characters, players, armies] = await Promise.all([
     prisma.character.findMany({ orderBy: { name: "asc" } }),
     prisma.user.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, email: true } }),
+    prisma.army.findMany({ where: { ownerId: { in: game.participants.map((participant) => participant.userId) } },
+      orderBy: { name: "asc" }, include: { _count: { select: { figures: true } } } }),
   ]);
 
-  return { game, characters, players };
+  return { game, characters, players, armies };
 }
 
 export type GameDetails = Awaited<ReturnType<typeof getGameDetails>>;

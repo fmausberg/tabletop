@@ -96,6 +96,7 @@ model Game {
 
   currentRound Int       @default(0)
   currentPhase PhaseType @default(PLACEMENT)
+  setupCompleted Boolean @default(false)
 
   participants GameParticipant[]
   figures      Figure[]
@@ -108,6 +109,8 @@ model GameParticipant {
   game   Game   @relation(fields: [gameId], references: [id])
   userId String
   user   User   @relation(fields: [userId], references: [id])
+  sourceArmyId String?
+  armyName String?
 
   figures        Figure[]
   initiativesWon Round[]     @relation("InitiativeWinner")
@@ -126,6 +129,7 @@ model Figure {
   character   Character @relation(fields: [characterId], references: [id])
   number      Int?
   short       String    @default("X")
+  platoon     Int?
 
   participantId String
   participant   GameParticipant @relation(fields: [participantId], references: [id])

@@ -8,11 +8,18 @@ export async function addParticipant(gameId: string, form: FormData) {
   const userId = String(form.get("userId") ?? "").trim();
   if (!userId) return { error: "Bitte wähle einen Benutzer aus." };
   try {
-    await prisma.gameParticipant.upsert({
-      where: { gameId_userId: { gameId, userId } },
-      create: { gameId, userId },
-      update: {},
+    const result = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Game" WHERE id = ${gameId} FOR UPDATE`;
+      const game = await tx.game.findUnique({ where: { id: gameId } });
+      if (!game || game.setupCompleted || game.currentRound !== 0 || game.currentPhase !== "PLACEMENT") return { error: "Teilnehmer können nur während der Spielvorbereitung hinzugefügt werden." };
+      await tx.gameParticipant.upsert({
+        where: { gameId_userId: { gameId, userId } },
+        create: { gameId, userId },
+        update: {},
+      });
+      return { error: null };
     });
+    if (result.error) return result;
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
       return { error: "Das Spiel oder der ausgewählte Benutzer existiert nicht mehr." };
