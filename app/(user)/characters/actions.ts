@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
-import { CharacterType } from "@/generated/prisma/enums";
+import { CharacterType, Race } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { numericFields } from "./fields";
 
@@ -19,12 +19,16 @@ export async function saveCharacter(id: string | null, form: FormData) {
   const name = String(form.get("name") ?? "").trim();
   const short = String(form.get("short") ?? "").trim();
   const type = String(form.get("type") ?? "") as CharacterType;
+  const race = String(form.get("race") ?? "") as Race;
   if (!name) return { error: "Please enter a name." };
   if (!short) return { error: "Please enter a short name." };
   if (!Object.values(CharacterType).includes(type)) return { error: "Please select a character type." };
+  if (!Object.values(Race).includes(race)) return { error: "Please select a valid race." };
 
   const values: Record<string, number | null> = {};
   for (const field of numericFields) {
+    // Number is no longer editable; preserve existing values when it is absent.
+    if (field.name === "number" && !form.has("number")) continue;
     const raw = String(form.get(field.name) ?? "").trim();
     if (!raw && field.optional) {
       values[field.name] = null;
@@ -36,8 +40,9 @@ export async function saveCharacter(id: string | null, form: FormData) {
     }
     values[field.name] = value;
   }
+  if (values.points! < 0) return { error: "Points must be zero or greater." };
 
-  const data = { name, short, type, ...values } as Prisma.CharacterCreateInput;
+  const data = { name, short, type, race, ...values } as Prisma.CharacterCreateInput;
   try {
     if (id) await prisma.character.update({ where: { id }, data });
     else await prisma.character.create({ data });
@@ -45,6 +50,8 @@ export async function saveCharacter(id: string | null, form: FormData) {
     return { error: errorMessage(error) };
   }
   revalidatePath("/characters");
+  revalidatePath("/armies");
+  revalidatePath("/armies/[armyid]", "page");
   return { error: null };
 }
 

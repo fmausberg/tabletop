@@ -2,8 +2,14 @@
 
 import { useState, useTransition } from "react";
 import type { Character } from "@/generated/prisma/client";
+import { Race } from "@/generated/prisma/enums";
 import { deleteCharacter, saveCharacter } from "./actions";
 import { numericFields, typeLabels } from "./fields";
+
+const tableFields = numericFields.filter((field) => field.name !== "number" && field.name !== "fightValueFar");
+const shortLabels: Partial<Record<(typeof numericFields)[number]["name"], string>> = {
+  fightValueNear: "F", strength: "S", defense: "D", attacks: "A", wounds: "W", courage: "C",
+};
 
 const button = "rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800";
 const input = "mt-1 w-full rounded-md border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700";
@@ -14,6 +20,15 @@ export function CharactersTable({ characters }: { characters: Character[] }) {
   const [message, setMessage] = useState("");
   const [pending, startTransition] = useTransition();
   const selected = editor && editor !== "new" ? editor : null;
+
+  function renderNumericField(field: (typeof numericFields)[number]) {
+    return <label key={field.name} className="block min-w-0 text-sm">
+      {field.label}{field.optional && <span className="text-zinc-500"> (optional)</span>}
+      <input className={input} type="number" name={field.name} step={field.decimal ? "any" : "1"}
+        min={field.name === "points" ? 0 : undefined} required={!field.optional}
+        defaultValue={selected?.[field.name] ?? (field.name === "points" ? 0 : "")} />
+    </label>;
+  }
 
   function openEditor(character: Character | "new") {
     setError(null);
@@ -55,19 +70,26 @@ export function CharactersTable({ characters }: { characters: Character[] }) {
             });
           }}>
             <fieldset disabled={pending}>
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                <label className="col-span-2 text-sm">Name<input autoFocus className={input} name="name" required defaultValue={selected?.name ?? ""} /></label>
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+                <label className="text-sm">Name<input autoFocus className={input} name="name" required defaultValue={selected?.name ?? ""} /></label>
                 <label className="text-sm">Short<input className={input} name="short" required defaultValue={selected?.short ?? "X"} /></label>
                 <label className="text-sm">Type
                   <select className={input} name="type" defaultValue={selected?.type ?? "WARRIOR"}>
                     {Object.entries(typeLabels).map(([value, label]) => <option key={value} value={value} className="bg-white text-zinc-900">{label}</option>)}
                   </select>
                 </label>
-                {numericFields.map((field) => (
-                  <label key={field.name} className="text-sm">{field.label}{field.optional && <span className="text-zinc-500"> (optional)</span>}
-                    <input className={input} type="number" name={field.name} step={field.decimal ? "any" : "1"} required={!field.optional} defaultValue={selected?.[field.name] ?? ""} />
-                  </label>
-                ))}
+                <label className="text-sm">Race
+                  <select className={input} name="race" required defaultValue={selected?.race ?? "OTHER"}>
+                    {Object.values(Race).map((race) => <option key={race} value={race} className="bg-white text-zinc-900">{race}</option>)}
+                  </select>
+                </label>
+                {numericFields.filter((field) => field.name === "points").map(renderNumericField)}
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-7">
+                {numericFields.filter((field) => ["fightValueNear", "fightValueFar", "strength", "defense", "attacks", "wounds", "courage"].includes(field.name)).map(renderNumericField)}
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+                {numericFields.filter((field) => ["baseDiameterCm", "heightCm", "speedCm"].includes(field.name)).map(renderNumericField)}
               </div>
               <div className="mt-5 flex gap-2">
                 <button className={button} type="submit">{pending ? "Saving…" : "Save character"}</button>
@@ -86,7 +108,8 @@ export function CharactersTable({ characters }: { characters: Character[] }) {
               <th scope="col" className="p-3">Name</th>
               <th scope="col" className="p-3">Short</th>
               <th scope="col" className="p-3">Type</th>
-              {numericFields.map((field) => <th scope="col" className="p-3" key={field.name}>{field.label}</th>)}
+              <th scope="col" className="p-3">Race</th>
+              {tableFields.map((field) => <th scope="col" className="p-3" key={field.name} title={field.name === "fightValueNear" ? "Fight (near/far+)" : field.label}>{shortLabels[field.name] ?? field.label}</th>)}
               <th scope="col" className="p-3">Actions</th>
             </tr>
           </thead>
@@ -96,7 +119,10 @@ export function CharactersTable({ characters }: { characters: Character[] }) {
                 <th scope="row" className="p-3 font-medium">{character.name}</th>
                 <td className="p-3">{character.short}</td>
                 <td className="p-3">{typeLabels[character.type]}</td>
-                {numericFields.map((field) => <td key={field.name} className="p-3 tabular-nums">{character[field.name] ?? "—"}</td>)}
+                <td className="p-3">{character.race}</td>
+                {tableFields.map((field) => <td key={field.name} className="p-3 tabular-nums">{field.name === "fightValueNear"
+                  ? `${character.fightValueNear}/${character.fightValueFar === null ? "—" : `${character.fightValueFar}+`}`
+                  : character[field.name] ?? "—"}</td>)}
                 <td className="p-3">
                   <div className="flex gap-2">
                     <button className={button} disabled={pending} aria-label={`Edit ${character.name}`} onClick={() => openEditor(character)}>Edit</button>
@@ -121,7 +147,7 @@ export function CharactersTable({ characters }: { characters: Character[] }) {
                 </td>
               </tr>
             ))}
-            {characters.length === 0 && <tr><td colSpan={15} className="p-10 text-center text-zinc-500">No characters yet. Add your first character to get started.</td></tr>}
+            {characters.length === 0 && <tr><td colSpan={tableFields.length + 5} className="p-10 text-center text-zinc-500">No characters yet. Add your first character to get started.</td></tr>}
           </tbody>
         </table>
       </div>

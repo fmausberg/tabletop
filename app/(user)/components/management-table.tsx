@@ -75,7 +75,7 @@ export function ManagementTable({ title, singular, rows, fields, saveAction, del
                 <label className="text-sm" key={field.name}>{field.label}{field.optional && " (optional)"}
                   {field.type === "select" ? (
                     <select className={input} name={field.name} required defaultValue={String(selected?.[field.name] ?? "")}>
-                      <option value="" disabled>Board auswählen</option>
+                      <option value="" disabled>{field.label} auswählen</option>
                       {field.options?.map((option) => <option className="bg-white text-zinc-900" key={option.value} value={option.value}>{option.label}</option>)}
                     </select>
                   ) : <input autoFocus={index === 0} className={input} name={field.name} type={field.type ?? "text"} step={field.step} min={field.min} required={!field.optional} defaultValue={String(selected?.[field.name] ?? "")} />}

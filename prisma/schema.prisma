@@ -85,6 +85,7 @@ model Character {
   speedCm        Float
 
   figures Figure[]
+  armyFigures ArmyFigure[]
 }
 
 model Game {
@@ -294,4 +295,21 @@ model WoundChange {
   woundsAfter  Int
 
   @@index([figureId, actionId])
+}
+
+model Army {
+  id        String       @id @default(cuid())
+  name      String
+  ownerId   String
+  figures   ArmyFigure[]
+}
+
+model ArmyFigure {
+  id          String @id @default(cuid())
+  armyId      String
+  characterId String
+  platoon     Int
+
+  army      Army      @relation(fields: [armyId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id])
 }

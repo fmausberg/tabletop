@@ -1,5 +1,6 @@
 export const numericFields = [
   { name: "number", label: "Number", optional: true, decimal: false },
+  { name: "points", label: "Points", optional: false, decimal: false },
   { name: "fightValueNear", label: "Fight (near)", optional: false, decimal: false },
   { name: "fightValueFar", label: "Fight (far)", optional: true, decimal: false },
   { name: "strength", label: "Strength", optional: false, decimal: false },
